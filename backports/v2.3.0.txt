@@ -1,0 +1,42 @@
+# Backport list for base v2.3.0 (67c5f53b). One line per Monero commit, in pick order.
+# Columns: <monero-sha> <release> <class> <status> <description>
+#   release: sec.1 | sec.2 | sec.3 | skip
+#   class:   memory | secrets | funds | privacy | dos | dependency
+#   status:  todo | picked | conflict | skipped
+# tools/backport.sh reads this file; lines starting with # are ignored.
+
+74c313420 sec.1 memory  todo byte_slice: fix memcpy in constructor
+1d3d30c50 sec.1 memory  todo crypto: check+throw for Cryptonight v1 invalid input
+7a7c42ffb sec.1 memory  todo serialization: handle EOF at varint boundary
+dedae5272 sec.1 memory  todo epee: fix off-by-one over-read in match_string2 unicode escape parsing
+7507aed69 sec.1 dos     todo wallet2: guard gamma picker against zero-output windows
+72d91039e sec.1 memory  todo wallet2: validate cached transfer indices
+987a2a77d sec.1 memory  todo wallet2: bounds check additional derivations in is_out_to_acc
+ef7bdda92 sec.1 funds   todo wallet2: validate block hash when repairing empty hashchain
+d9236332a sec.1 dos     todo wallet2: fix data races in refresh error handlers
+
+b99d15f08 sec.2 privacy todo wallet2: reject non-monotonic rct output distributions
+ac37e75df sec.2 dos     todo wallet2: fix infinite loop in estimate_tx_size_and_weight on large n_outputs
+bbd635075 sec.2 dos     todo wallet2: honor max_blocks bound during fast_refresh hash pulls
+ef7a86c99 sec.2 dos     todo wallet2: guard optimized coinbase refresh against empty vout
+a09eb5cf4 sec.2 memory  todo wallet2: fix task lifetime during parsed block processing
+c86fd739d sec.2 funds   todo wallet2: filter unchecked RPC error statuses
+144b3f9e6 sec.2 funds   todo wallet2: sanitize untrusted daemon status in sweep unmixable
+4b00f47d4 sec.2 secrets todo wallet2: clear m_additional_tx_keys during bg sync
+
+214328387 sec.3 memory  todo Add checks in cryptonote serialization routine (needs full-chain proof)
+d869dc098 sec.3 memory  todo cryptonote_basic: serialization checks (needs full-chain proof)
+b66e2227c sec.3 memory  todo cryptonote_basic: parse_and_validate_tx param to check max size (needs full-chain proof)
+
+# Out of scope under POLICY §2 (correctness, not security) or §4 / own code needed:
+8703b8a4c skip  -       skipped wallet2: ensure transfers and sweeps use same fee calc logic (correctness)
+34c7d31ef skip  -       skipped wallet: shortchain history should include base block (correctness)
+357b446a1 skip  -       skipped wallet2: reset scan status for already processed outputs (correctness)
+c147e2dfe skip  -       skipped wallet2: fix edge case where tx's ki's remain marked unspent (correctness)
+9239d3669 skip  -       skipped wallet: identify spends in pool when scanning (correctness)
+44412d357 skip  -       skipped cryptonote_core: add change address sanity check (asset-aware adaptation = own code)
+4eae97404 skip  -       skipped add sanity_check_pending_tx (own code; JS layer compensates)
+b09e9bfe5 skip  -       skipped tx/partial tx validation improvements (depends on 4eae97404)
+0125cf269 skip  -       skipped wallet: fix inconsistent tx pubkey handling (depends on chain above)
+65568d3a8 skip  -       skipped build: fix build with Boost 1.85 and remove viewkey logging (bundled; no leak at default level)
+71e3be0e4 skip  -       skipped cryptonote_protocol: tighten pruned transaction blob validation (daemon; re-assess in daemon pass)

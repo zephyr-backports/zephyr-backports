@@ -1,0 +1,4 @@
+inventory/*/files/
+inventory/*/raw.tsv
+*.log
+.DS_Store

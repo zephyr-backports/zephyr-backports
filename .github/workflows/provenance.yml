@@ -1,0 +1,30 @@
+# Reusable workflow (workflow_call) for the security forks: checks that every commit above the
+# upstream tag is a `git cherry-pick -x` from monero/release-v0.18 or an allowed own file,
+# using tools/check-provenance.sh from this repo. Forks call it from their own
+# .github/workflows/provenance.yml (see fork-files/zephyr/).
+name: provenance (reusable)
+on:
+  workflow_call:
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: checkout tooling
+        uses: actions/checkout@v4
+        with:
+          repository: zephyr-backports/zephyr-backports
+          path: .zephyr-backports
+      - name: fetch monero release-v0.18 and the upstream tag
+        run: |
+          git remote add monero https://github.com/monero-project/monero.git
+          git fetch --no-tags monero release-v0.18
+          ref="${GITHUB_REF_NAME#security/}"
+          [ "$ref" = "$GITHUB_REF_NAME" ] && ref=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-sec.*')
+          git fetch --no-tags https://github.com/ZephyrProtocol/${GITHUB_REPOSITORY#*/}.git "refs/tags/$ref:refs/tags/$ref"
+          echo "BASE_TAG=$ref" >> "$GITHUB_ENV"
+      - name: check provenance
+        run: bash .zephyr-backports/tools/check-provenance.sh . "$BASE_TAG"
