@@ -9,10 +9,11 @@ jobs:
   provenance:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout fork
+      - name: checkout fork (on a pull request: its head, not GitHub's synthetic merge commit)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: checkout tooling
         uses: actions/checkout@v4
         with:
@@ -26,12 +27,23 @@ jobs:
             zephyr-wallet)     echo "UP_REMOTE=haven" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/haven-protocol-org/haven-web-app.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=master" >> "$GITHUB_ENV";;
             *)                 echo "UP_REMOTE=monero" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/monero-project/monero.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=release-v0.18 master" >> "$GITHUB_ENV";;
           esac
+          # The base is the upstream tag the security branch is named after. The forks carry no
+          # upstream tags on GitHub (only v*-sec.* tags are pushed), so the tag comes from the branch
+          # name: the PR's base branch, or the pushed branch itself; a push to any other branch falls
+          # back to the newest upstream v* tag that is an ancestor.
+          UP_TAGS=https://github.com/ZephyrProtocol/${GITHUB_REPOSITORY#*/}.git
           if [ -f .github/upstream-base ]; then
             ref=$(tr -d ' \n' < .github/upstream-base)   # forks without upstream tags pin the base commit here
           else
-            ref="${GITHUB_REF_NAME#security/}"
-            [ "$ref" = "$GITHUB_REF_NAME" ] && ref=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-sec.*')
-            git fetch --no-tags https://github.com/ZephyrProtocol/${GITHUB_REPOSITORY#*/}.git "refs/tags/$ref:refs/tags/$ref"
+            ref=""
+            case "${GITHUB_BASE_REF:-}" in security/*) ref="${GITHUB_BASE_REF#security/}";; esac
+            [ -n "$ref" ] || case "${GITHUB_REF_NAME:-}" in security/*) ref="${GITHUB_REF_NAME#security/}";; esac
+            if [ -n "$ref" ]; then
+              git fetch --no-tags "$UP_TAGS" "refs/tags/$ref:refs/tags/$ref"
+            else
+              git fetch --no-tags "$UP_TAGS" 'refs/tags/v*:refs/tags/v*'
+              ref=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-sec.*')
+            fi
           fi
           echo "BASE_TAG=$ref" >> "$GITHUB_ENV"
       - name: check provenance (upstream per fork via UP_REMOTE/UP_URL/UP_BRANCH)
