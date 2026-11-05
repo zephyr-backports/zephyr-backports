@@ -9,7 +9,7 @@ jobs:
   provenance:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout fork (on a pull request: its head, not GitHub's synthetic merge commit)
+      - name: checkout fork at the pull request head, not the synthetic merge commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
