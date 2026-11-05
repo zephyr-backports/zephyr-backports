@@ -5,7 +5,8 @@
 #
 # Every commit above the upstream tag must be either
 #   (a) a cherry-pick: body contains "(cherry picked from commit <sha>)" and that sha is
-#       reachable from monero/release-v0.18, or
+#       reachable from the fork's upstream branch (monero release-v0.18 for zephyr, woodser's
+#       monero-cpp / monero-ts master for zephyr-cpp / zephyr-javascript), or
 #   (b) an allowed own commit: touches only README.md, SECURITY-BACKPORTS.md, .github/**,
 #       VERSIONTAG, and carries the trailer "Origin: zephyr-backports", or
 #   (c) a dependency pin (package.json + lockfile only, trailers Origin + "Advisory: <id>"), or
@@ -15,17 +16,26 @@
 set -euo pipefail
 FORK=${1:?fork dir}; BASE=${2:?upstream tag}
 cd "$FORK"
-git fetch -q monero release-v0.18 2>/dev/null || true
+# upstream per fork (same mapping as backport.sh); env UP_REMOTE/UP_URL/UP_BRANCH override
+case "$(basename "$(git remote get-url origin 2>/dev/null || pwd)" .git)" in
+  zephyr-cpp)        d="monero-cpp https://github.com/woodser/monero-cpp.git master" ;;
+  zephyr-javascript) d="monero-ts https://github.com/woodser/monero-ts.git master" ;;
+  *)                 d="monero https://github.com/monero-project/monero.git release-v0.18" ;;
+esac
+read -r dr du db <<<"$d"; UP_REMOTE=${UP_REMOTE:-$dr}; UP_URL=${UP_URL:-$du}; UP_BRANCH=${UP_BRANCH:-$db}
+git remote get-url "$UP_REMOTE" >/dev/null 2>&1 || git remote add "$UP_REMOTE" "$UP_URL"
+git fetch -q "$UP_REMOTE" "$UP_BRANCH" 2>/dev/null || true
+UP_REF="$UP_REMOTE/$UP_BRANCH"
 fail=0
 for c in $(git rev-list --reverse "$BASE..HEAD"); do
   body=$(git log -1 --format=%B "$c")
   subj=$(git log -1 --format=%s "$c")
   if origin=$(printf '%s' "$body" | grep -oE '\(cherry picked from commit [0-9a-f]{40}\)' | grep -oE '[0-9a-f]{40}' | head -1) && [ -n "$origin" ]; then
-    if git merge-base --is-ancestor "$origin" monero/release-v0.18 2>/dev/null; then
+    if git merge-base --is-ancestor "$origin" "$UP_REF" 2>/dev/null; then
       grep -q "${origin:0:9}" SECURITY-BACKPORTS.md 2>/dev/null && st="ok" || { st="NOT IN SECURITY-BACKPORTS.md"; fail=1; }
-      printf 'pick  %s  from monero %s  %s  [%s]\n' "${c:0:9}" "${origin:0:9}" "$subj" "$st"
+      printf 'pick  %s  from %s %s  %s  [%s]\n' "${c:0:9}" "$UP_REMOTE" "${origin:0:9}" "$subj" "$st"
     else
-      printf 'FAIL  %s  origin %s not on monero/release-v0.18  %s\n' "${c:0:9}" "${origin:0:9}" "$subj"; fail=1
+      printf 'FAIL  %s  origin %s not on %s  %s\n' "${c:0:9}" "${origin:0:9}" "$UP_REF" "$subj"; fail=1
     fi
   else
     files=$(git show --format= --name-only "$c")
