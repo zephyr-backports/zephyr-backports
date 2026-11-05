@@ -23,6 +23,7 @@ jobs:
           case "${GITHUB_REPOSITORY#*/}" in
             zephyr-cpp)        echo "UP_REMOTE=monero-cpp" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/woodser/monero-cpp.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=master" >> "$GITHUB_ENV";;
             zephyr-javascript) echo "UP_REMOTE=monero-ts" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/woodser/monero-ts.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=master" >> "$GITHUB_ENV";;
+            zephyr-wallet)     echo "UP_REMOTE=haven" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/haven-protocol-org/haven-web-app.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=master" >> "$GITHUB_ENV";;
             *)                 echo "UP_REMOTE=monero" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/monero-project/monero.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=release-v0.18" >> "$GITHUB_ENV";;
           esac
           if [ -f .github/upstream-base ]; then

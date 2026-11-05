@@ -5,7 +5,7 @@
 #
 # Every commit above the upstream tag must be either
 #   (a) a cherry-pick: body contains "(cherry picked from commit <sha>)" and that sha is
-#       reachable from the fork's upstream branch (monero release-v0.18 for zephyr, woodser's
+#       reachable from the fork's upstream branch (monero release-v0.18 for zephyr, haven-web-app master for zephyr-wallet, woodser's
 #       monero-cpp / monero-ts master for zephyr-cpp / zephyr-javascript), or
 #   (b) an allowed own commit: touches only README.md, SECURITY-BACKPORTS.md, .github/**,
 #       VERSIONTAG, and carries the trailer "Origin: zephyr-backports", or
@@ -20,6 +20,7 @@ cd "$FORK"
 case "$(basename "$(git remote get-url origin 2>/dev/null || pwd)" .git)" in
   zephyr-cpp)        d="monero-cpp https://github.com/woodser/monero-cpp.git master" ;;
   zephyr-javascript) d="monero-ts https://github.com/woodser/monero-ts.git master" ;;
+  zephyr-wallet)     d="haven https://github.com/haven-protocol-org/haven-web-app.git master" ;;
   *)                 d="monero https://github.com/monero-project/monero.git release-v0.18" ;;
 esac
 read -r dr du db <<<"$d"; UP_REMOTE=${UP_REMOTE:-$dr}; UP_URL=${UP_URL:-$du}; UP_BRANCH=${UP_BRANCH:-$db}
