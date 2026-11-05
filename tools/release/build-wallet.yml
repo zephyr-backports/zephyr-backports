@@ -1,0 +1,214 @@
+# DRAFT, not run. Release build for the zephyr-wallet security fork (lives in the fork as
+# .github/workflows/build-wallet.yml once reviewed). Triggered by a signed tag vX.Y.Z-sec.N.
+#
+# Produces: web bundle (tarball), macOS dmg arm64 + x64, Windows Squirrel installer, Linux deb,
+# flatpak bundle; then SHA256SUMS over all of them, attached to a DRAFT release, unsigned. The
+# owner downloads SHA256SUMS, verifies it against the artefacts, signs it locally with the release
+# key (SHA256SUMS.asc), uploads the signature and publishes the release (POLICY §7: no platform
+# code signing; verification is by the GPG-signed hashes and this public run).
+#
+# Differences from upstream's disabled workflows (*.yml-old), on purpose:
+#   - `npm ci` from the lockfile only: no `npm install`, no `npm audit fix`, no
+#     `npm install zephyr-javascript@latest` during the build (all three made upstream's builds
+#     depend on the day they ran);
+#   - mainnet only (REACT_APP_NET_TYPE_ID=0), no S3 upload, no third-party actions;
+#   - every action pinned by commit sha (tag in the comment, looked up 2026-11-05).
+# Open points for the first run (estimates, not verified):
+#   - Node 16: react-scripts 4 / webpack 4 do not build on Node >= 17 without
+#     NODE_OPTIONS=--openssl-legacy-provider; upstream used Node 14. Electron 22 bundles its own Node.
+#   - the lockfiles resolve zephyr-javascript over git+ssh; the insteadOf rule rewrites that to https.
+#   - artefact file names follow electron-forge 6 defaults and may need adjusting.
+name: build-wallet
+
+on:
+  push:
+    tags: ['v*-sec.*']
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '16'
+  REACT_APP_NET_TYPE_ID: '0'
+  ZEPHYR_DESKTOP_DEVELOPMENT: 'false'
+  NODE_INSTALLER: npm
+  CI: 'false'   # react-scripts treats warnings as errors when CI=true (upstream sets the same)
+
+jobs:
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: git dependencies over https
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+      - name: Install (lockfile)
+        working-directory: client
+        run: npm ci
+      - name: Build
+        working-directory: client
+        run: npm run build:web:ci
+      - name: Tarball (deterministic: sorted, fixed mtime and owner)
+        run: |
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=0 --group=0 --numeric-owner \
+              -C client -cf - build | gzip -n -9 > "zephyr-wallet-web-${GITHUB_REF_NAME}.tar.gz"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web
+          path: zephyr-wallet-web-*.tar.gz
+          if-no-files-found: error
+
+  desktop-mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: git dependencies over https
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+      - name: Client build for desktop
+        working-directory: client
+        run: |
+          npm ci
+          npm run build:desktop:ci
+          npm run copy-build
+      - name: Make dmg and zip, arm64 and x64 (upstream's own sh/make.sh recipe)
+        working-directory: zephyr-desktop-app
+        run: |
+          npm ci
+          npm run make -- --arch="arm64,x64"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-mac
+          path: |
+            zephyr-desktop-app/out/make/*.dmg
+            zephyr-desktop-app/out/make/zip/darwin/**/*.zip
+          if-no-files-found: error
+
+  desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: git dependencies over https
+        shell: bash
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+      - name: Client build for desktop
+        shell: bash   # the client's npm scripts use bash
+        working-directory: client
+        run: |
+          npm ci
+          npm run build:desktop:ci
+          npm run copy-build
+      - name: Make Squirrel installer
+        shell: bash
+        working-directory: zephyr-desktop-app
+        run: |
+          npm ci
+          npm run make
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-windows
+          path: zephyr-desktop-app/out/make/squirrel.windows/x64/*.exe
+          if-no-files-found: error
+
+  desktop-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Packaging tools for maker-deb
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg fakeroot
+      - name: git dependencies over https
+        run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+      - name: Client build for desktop
+        working-directory: client
+        run: |
+          npm ci
+          npm run build:desktop:ci
+          npm run copy-build
+      - name: Make deb
+        working-directory: zephyr-desktop-app
+        run: |
+          npm ci
+          npm run make
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-linux
+          path: zephyr-desktop-app/out/make/deb/x64/*.deb
+          if-no-files-found: error
+
+  flatpak:
+    needs: desktop-linux
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Manifest from the home repo (pinned; the fork's build config stays upstream's)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: zephyr-backports/zephyr-backports
+          ref: main   # DRAFT: pin to a commit sha of the home repo once the manifest is published
+          path: home
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: desktop-linux
+          path: deb
+      - name: flatpak-builder
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends flatpak flatpak-builder elfutils
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build bundle from the deb of this tag
+        run: |
+          set -euo pipefail
+          debs=(deb/*.deb); [ "${#debs[@]}" = 1 ] || { echo "expected one deb, got ${#debs[@]}"; exit 1; }
+          cp home/tools/release/flatpak/dev.lateo.zephyr.yml .
+          cp "${debs[0]}" zephyr.deb
+          flatpak-builder --user --install-deps-from=flathub --force-clean --repo=repo build-dir dev.lateo.zephyr.yml
+          flatpak build-bundle repo "zephyr-wallet-${GITHUB_REF_NAME}.flatpak" dev.lateo.zephyr
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flatpak
+          path: zephyr-wallet-*.flatpak
+          if-no-files-found: error
+
+  hashes:
+    needs: [web, desktop-mac, desktop-windows, desktop-linux, flatpak]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write   # only this job may create the draft release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+      - name: SHA256SUMS (unsigned; the owner signs locally)
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          find . -type f ! -name SHA256SUMS -printf '%P\n' | LC_ALL=C sort | xargs -d '\n' sha256sum > SHA256SUMS
+          cat SHA256SUMS
+      - name: Draft release with the artefacts and the hashes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Same source as upstream plus the security changes listed in SECURITY-BACKPORTS.md. Not notarized or Authenticode-signed (POLICY §7). Verify with SHA256SUMS.asc (added after signing) and this run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            $(find dist -type f | LC_ALL=C sort)

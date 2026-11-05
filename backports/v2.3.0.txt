@@ -5,30 +5,68 @@
 #   status:  todo | picked | conflict | skipped
 # tools/backport.sh reads this file; lines starting with # are ignored.
 
-74c313420 sec.1 memory  todo byte_slice: fix memcpy in constructor
-1d3d30c50 sec.1 memory  todo crypto: check+throw for Cryptonight v1 invalid input
-7a7c42ffb sec.1 memory  todo serialization: handle EOF at varint boundary
-dedae5272 sec.1 memory  todo epee: fix off-by-one over-read in match_string2 unicode escape parsing
-7507aed69 sec.1 dos     todo wallet2: guard gamma picker against zero-output windows
-72d91039e sec.1 memory  todo wallet2: validate cached transfer indices
-987a2a77d sec.1 memory  todo wallet2: bounds check additional derivations in is_out_to_acc
-ef7bdda92 sec.1 funds   todo wallet2: validate block hash when repairing empty hashchain
-d9236332a sec.1 dos     todo wallet2: fix data races in refresh error handlers
+74c313420 sec.1 memory  picked byte_slice: fix memcpy in constructor
+1d3d30c50 sec.1 memory  picked crypto: check+throw for Cryptonight v1 invalid input
+7a7c42ffb sec.1 memory  picked serialization: handle EOF at varint boundary
+dedae5272 sec.1 memory  picked epee: fix off-by-one over-read in match_string2 unicode escape parsing
+0b7967907 sec.1 dos     picked wallet2: guard gamma picker against zero-output windows (Monero master counterpart of release-v0.18 7507aed69, same author/date/subject; also fixes the master-only unit test exact_unlock_block_tiny that Zephyr carries; decided 2026-11-05)
+72d91039e sec.1 memory  picked wallet2: validate cached transfer indices
+987a2a77d sec.1 memory  picked wallet2: bounds check additional derivations in is_out_to_acc
+ef7bdda92 sec.1 funds   picked wallet2: validate block hash when repairing empty hashchain
+d9236332a sec.1 dos     picked wallet2: fix data races in refresh error handlers
+e62963ceb sec.1 dos     picked dns_util: add new DNSSEC trust anchor (KSK-2024, DS 38696; root signing switched 2026-10-11; 1 line)
 
-b99d15f08 sec.2 privacy todo wallet2: reject non-monotonic rct output distributions
-ac37e75df sec.2 dos     todo wallet2: fix infinite loop in estimate_tx_size_and_weight on large n_outputs
-bbd635075 sec.2 dos     todo wallet2: honor max_blocks bound during fast_refresh hash pulls
-ef7a86c99 sec.2 dos     todo wallet2: guard optimized coinbase refresh against empty vout
-a09eb5cf4 sec.2 memory  todo wallet2: fix task lifetime during parsed block processing
-c86fd739d sec.2 funds   todo wallet2: filter unchecked RPC error statuses
-144b3f9e6 sec.2 funds   todo wallet2: sanitize untrusted daemon status in sweep unmixable
-4b00f47d4 sec.2 secrets todo wallet2: clear m_additional_tx_keys during bg sync
+b99d15f08 sec.2 privacy picked wallet2: reject non-monotonic rct output distributions
+ac37e75df sec.2 dos     conflict wallet2: fix infinite loop in estimate_tx_size_and_weight on large n_outputs (semantic: Zephyr changed the vin/vout size lines the commit rewrites, +4 asset bytes)
+bbd635075 sec.2 dos     picked wallet2: honor max_blocks bound during fast_refresh hash pulls
+ef7a86c99 sec.2 dos     conflict wallet2: guard optimized coinbase refresh against empty vout (semantic: Zephyr rewrote the miner-tx n_vouts lines, no optimize-coinbase path)
+a09eb5cf4 sec.2 memory  conflict wallet2: fix task lifetime during parsed block processing (semantic: 2 hunks rewrite tpool.submit lines Zephyr removed; resolving would drop part of the commit)
+c86fd739d sec.2 funds   picked wallet2: filter unchecked RPC error statuses
+144b3f9e6 sec.2 funds   picked wallet2: sanitize untrusted daemon status in sweep unmixable
+4b00f47d4 sec.2 secrets conflict wallet2: clear m_additional_tx_keys during bg sync (semantic: Zephyr has no clear_user_data / background sync; not applicable)
+
+# Dependency pins and small tooling fixes, measured 2026-11-05 (docs/ANALYSIS-REPOS.md §1.4):
+# contrib/depends is what Zephyr's release binaries are built with. All clean, in upstream order.
+52b33f4fb sec.2 dos        picked common: sanitize message writer console output (terminal escape injection)
+98bc2ec5e sec.2 dependency picked depends: unbound: update to 1.25.1 (CVE-2026-33278 RCE in DNSSEC validation affects 1.19.1)
+c4e54fe5e sec.2 dependency picked depends: openssl: update to 3.0.19
+0d49006c9 sec.2 dependency picked depends: explicitely enable cross-compile mode for autoconf
+6b629b376 sec.2 dependency picked Updated RandomX to v1.2.2 (invalid hashes on ARM/RISC-V)
+8d0b73e50 sec.2 dependency picked depends: openssl: update to 3.0.21 (CVE-2026-45447 heap UAF in PKCS7_verify)
+b4b5bfbb0 sec.2 dependency picked external: update randomx to v1.2.3
+342c3a0fd sec.2 memory     picked Fix TryAcquireSRWLockShared being implicitly defined and causing UB (Windows)
+2a10eceae sec.2 dependency picked depends: unbound: update to 1.25.2
+91c32b55c sec.2 dependency picked depends: openssl: update to 3.0.22
+0c29b3ce3 sec.2 dependency picked depends: unbound: update to 1.26.1 (CVE-2026-81642 heap overflow digesting DNSKEY)
+
+# Daemon pass, measured 2026-11-05 (docs/ANALYSIS-REPOS.md §1): clean picks join sec.2; audience
+# is the community nodes the wallets connect to (POLICY §3), the wallets themselves use remote nodes.
+af88effd9 sec.2 privacy picked rpc: disable get_transaction_pool in restricted mode
+7de175802 sec.2 privacy picked rpc: restrict get_alt_blocks_hashes
+98b350f7a sec.2 memory  picked contrib: fix unaligned&aliased levin buffer reads
+4f6652f35 sec.2 dos     picked net: cap aggregate ZMQ receive size
+d1508916b sec.2 dos     picked rpc: recover from oversized ZMQ requests
 
 214328387 sec.3 memory  todo Add checks in cryptonote serialization routine (needs full-chain proof)
 d869dc098 sec.3 memory  todo cryptonote_basic: serialization checks (needs full-chain proof)
 b66e2227c sec.3 memory  todo cryptonote_basic: parse_and_validate_tx param to check max size (needs full-chain proof)
+71e3be0e4 sec.3 memory  todo cryptonote_protocol: tighten pruned transaction blob validation (1 hunk; stricter parsing of peer data, needs full-chain proof)
+
+# sec.4 = restricted-ZMQ hardening (opt-in flag, decided 2026-11-05); the rest later (see ANALYSIS-REPOS.md §1):
+7f2cfe929 sec.4 privacy todo zmq: add restricted rpc mode (+217, new flag; feature-shaped hardening, decision needed; prerequisite of the next two)
+878c78176 sec.4 privacy todo zmq: apply restricted-mode privacy filtering to get_transaction_pool (clean after 7f2cfe929)
+dfb85dde0 sec.4 privacy todo rpc: hide ZMQ request contents in restricted mode (1 hunk daemon.cpp; after 7f2cfe929)
+1d45021cd later privacy todo rpc: hide sensitive txs from restricted block templates (4 hunks; touches blockchain.cpp/tx_pool.cpp, POLICY §4.1 review)
+096abdaa2 later dos     todo net: detect half-closed sockets before connection reuse (2 hunks, in tests; re-measure without test files)
+f277d328c later dos     todo p2p, rpc: group public IPv6 connection limits by /64 (6 hunks, +275; daemon-focused release)
+ee9e4a49b later dos     todo p2p: connection patches (3 hunks; daemon-focused release)
+f618ee113 later dos     todo Fix stall issues with p2p (4 hunks; daemon-focused release)
+05729aba7 later dependency todo depends: boost: update to 1.66.0 (1 hunk boost.mk; build only)
+b556ca667 later dependency todo depends: boost: update to 1.69.0 (2 hunks; build only)
+22a69e588 later dependency todo depends: libusb: update to 1.0.30 (2 hunks libusb.mk)
 
 # Out of scope under POLICY §2 (correctness, not security) or §4 / own code needed:
+7507aed69 skip  -       skipped wallet2: guard gamma picker against zero-output windows (release-v0.18 form; replaced by its master counterpart 0b7967907 because Zephyr carries the master-only test it adjusts; found by the native unit tests 2026-11-05)
 8703b8a4c skip  -       skipped wallet2: ensure transfers and sweeps use same fee calc logic (correctness)
 34c7d31ef skip  -       skipped wallet: shortchain history should include base block (correctness)
 357b446a1 skip  -       skipped wallet2: reset scan status for already processed outputs (correctness)
@@ -39,4 +77,4 @@ c147e2dfe skip  -       skipped wallet2: fix edge case where tx's ki's remain ma
 b09e9bfe5 skip  -       skipped tx/partial tx validation improvements (depends on 4eae97404)
 0125cf269 skip  -       skipped wallet: fix inconsistent tx pubkey handling (depends on chain above)
 65568d3a8 skip  -       skipped build: fix build with Boost 1.85 and remove viewkey logging (bundled; no leak at default level)
-71e3be0e4 skip  -       skipped cryptonote_protocol: tighten pruned transaction blob validation (daemon; re-assess in daemon pass)
+c14a0ba43 skip  -       skipped depends: hidapi: update to 0.15.0 (no advisory names hidapi 0.13.1; POLICY §2; dropped at review 2026-11-05)

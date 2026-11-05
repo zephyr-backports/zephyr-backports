@@ -1,0 +1,35 @@
+id	repo	tag	upstream_sha	title
+SB-001	zephyr	v2.3.0-sec.1	74c313420c1d22c5c8eecb8430fd5fe7a89143d7	byte_slice: size overflow checked before the copy
+SB-002	zephyr	v2.3.0-sec.1	1d3d30c5076200a308de4764491ace1d8a4d52af	Cryptonight v1 helper throws instead of exiting on short input
+SB-003	zephyr	v2.3.0-sec.1	7a7c42ffba1da6bd3f7bfd5a09ef9ae7275537a6	truncated varint at end of input is an error
+SB-004	zephyr	v2.3.0-sec.1	dedae5272d9d311464e8b25a5c57701591ac4eb1	off-by-one over-read in JSON unicode escape parsing
+SB-005	zephyr	v2.3.0-sec.1	0b7967907f82867d2884c559396543212600509e	decoy picker rejects an empty output window
+SB-006	zephyr	v2.3.0-sec.1	72d91039eb5c67c7912ef8328299e8e28d9effb0	cached transfer indices validated before use
+SB-007	zephyr	v2.3.0-sec.1	987a2a77d3e4b4d3781e70bc70031ff254313557	bounds check on additional derivations
+SB-008	zephyr	v2.3.0-sec.1	ef7bdda92af255270a61e4ea4c6c7fe098a70dd0	block hash from the node validated before hash chain rebuild
+SB-009	zephyr	v2.3.0-sec.1	d9236332a59bb090b0fa74e808237c26189564b0	refresh error handlers wait for worker threads
+SB-010	zephyr	v2.3.0-sec.1	e62963ceb83d18cd93261c1b6e9e80f7aa09ff3f	DNSSEC root trust anchor KSK-2024 added
+SB-011	zephyr-cpp	v2.3.0-sec.1	6d6d203f9df968c8dd652e4e667c1b05c0c52704	scan_txs takes the sync lock before scanning
+SB-012	zephyr-cpp	v2.3.0-sec.1	83832b89f97cfadd36690a629566584d1336cf41	tx query without transactions no longer reads past an empty vector
+SB-013	zephyr-cpp	v2.3.0-sec.1	48664ebaf6bc687fec511fd892b3b591e1e472aa	output query no longer dereferences an unset subaddress index
+SB-014	zephyr-cpp	v2.3.0-sec.1	44c81a80cde4a40f7d277dec23c63fd59e183dc8	key image import checks that hex and signature are present
+SB-015	zephyr	v2.3.0-sec.2	b99d15f08d80a8cad6dee88628192ba0411544fb	non-monotonic output distribution from the node rejected
+SB-016	zephyr	v2.3.0-sec.2	bbd6350751876f24ad21eb70cbfb12670659e927	fast_refresh honours the max_blocks bound
+SB-017	zephyr	v2.3.0-sec.2	c86fd739dceca593346ca3d3d3db835d1308e7ed	unchecked RPC status strings from the node filtered
+SB-018	zephyr	v2.3.0-sec.2	144b3f9e644c0b1d4ad994b99edf6c355b38e533	untrusted node status filtered in sweep unmixable
+SB-019	zephyr	v2.3.0-sec.2	52b33f4fb01bd54d936a016cbc63a4850daa3441	message writer console output sanitised (terminal escape injection)
+SB-020	zephyr	v2.3.0-sec.2	98bc2ec5e6896bfa210eafc42f8849431c9eb5d2	unbound 1.19.1 → 1.25.1 (depends)
+SB-021	zephyr	v2.3.0-sec.2	c4e54fe5e0bdb9cd8b460dd7836ad61855d54ad1	OpenSSL 3.0.13 → 3.0.19 (depends)
+SB-022	zephyr	v2.3.0-sec.2	0d49006c9d1740b2909d5173157e621e6a38ede1	autoconf cross-compile mode explicit (depends)
+SB-023	zephyr	v2.3.0-sec.2	6b629b37659d1846f4731255a2a2b2ef7b811f53	RandomX v1.2.2: correct hashes on ARM64/RISC-V JIT
+SB-024	zephyr	v2.3.0-sec.2	8d0b73e509fa60538eb86e8af1e970faa91a88a6	OpenSSL 3.0.19 → 3.0.21 (depends)
+SB-025	zephyr	v2.3.0-sec.2	b4b5bfbb0a7635bbe70a6378acf3e27658610f96	RandomX v1.2.3 (depends)
+SB-026	zephyr	v2.3.0-sec.2	342c3a0fd42584385c76743bb165ff6a75584c1e	Windows: TryAcquireSRWLockShared no longer implicitly declared (UB)
+SB-027	zephyr	v2.3.0-sec.2	2a10eceae0f34c350107876e1d4c9a6314e69d27	unbound 1.25.1 → 1.25.2 (depends)
+SB-028	zephyr	v2.3.0-sec.2	91c32b55c27e2a2202639c50d60c55d7472efaef	OpenSSL 3.0.21 → 3.0.22 (depends)
+SB-029	zephyr	v2.3.0-sec.2	0c29b3ce3b15a410d5e1dc10ebfb8d83d1bc0c04	unbound 1.25.2 → 1.26.1 (depends)
+SB-030	zephyr	v2.3.0-sec.2	af88effd9a82ca715c12ce6ea021fdbc1cbb3102	get_transaction_pool not served in restricted RPC mode
+SB-031	zephyr	v2.3.0-sec.2	7de175802a48caa7b96e516138de6cdc914bdc76	get_alt_blocks_hashes not served in restricted RPC mode
+SB-032	zephyr	v2.3.0-sec.2	98b350f7a15997f5866c413c16b07e2ee6348922	levin header reads no longer unaligned/aliased
+SB-033	zephyr	v2.3.0-sec.2	4f6652f356f804403f46ecbbb8b90c1c03abbc64	aggregate ZMQ receive size capped
+SB-034	zephyr	v2.3.0-sec.2	d1508916b44d08fa18dc8ac74e04e9f92dbfb2c1	ZMQ-RPC server recovers from oversized requests

@@ -1,0 +1,57 @@
+# DRAFT, not run. flatpak-builder manifest for the Zephyr desktop wallet as built by the
+# zephyr-wallet security fork. It repackages the deb that the same tag's `desktop-linux` job
+# produced (tools/release/build-wallet.yml copies it here as zephyr.deb); nothing is rebuilt and
+# the fork's build config is not touched (upstream's maker-flatpak is disabled, electron-forge
+# issue #2561).
+#
+# Runtime choice: org.freedesktop.Platform 26.08 with org.electronjs.Electron2.BaseApp 26.08,
+# the newest YY.08 branch present in both, from a read-only `git ls-remote --heads` on 2026-11-05:
+#   flathub/org.electronjs.Electron2.BaseApp: branch/18.08 … branch/26.08 (plus branch/stable)
+#   freedesktop-sdk/freedesktop-sdk:          release/20.08 … release/26.08
+# Electron 22 ships prebuilt binaries that need glibc, GTK 3, NSS, ALSA/PulseAudio client
+# libraries and X11 (Chromium 108 defaults to X11; Wayland only behind ozone flags). The
+# freedesktop runtime provides those, and the Electron BaseApp adds zypak (Chromium sandbox
+# inside flatpak), libsecret and libnotify. Not verified that Electron 22 runs on 26.08:
+# flatpak-builder is not installed on the workstation; the first CI run decides, with 25.08 as
+# the step back.
+#
+# The paths inside the deb (/usr/lib/zephyr, /usr/share/applications/zephyr.desktop,
+# /usr/share/pixmaps/zephyr.png) follow electron-installer-debian's defaults for
+# name "zephyr" (zephyr-desktop-app/forge.config.js) and need checking against a real deb.
+# The icon is installed as 512x512 without measuring it; check `icons/icon.png` and adjust the
+# hicolor directory to its real size.
+app-id: dev.lateo.zephyr
+runtime: org.freedesktop.Platform
+runtime-version: '26.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '26.08'
+command: zephyr-wallet
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --socket=x11
+  - --device=dri
+  - --socket=pulseaudio            # Chromium opens an audio client even when unused (estimate; drop if not needed)
+  - --share=network                # remote nodes and the price feed
+  - --filesystem=xdg-download      # the wallet saves .keys files; Electron 22's save dialog writes there
+  - --talk-name=org.freedesktop.Notifications
+modules:
+  - name: zephyr-wallet
+    buildsystem: simple
+    sources:
+      - type: file
+        path: zephyr.deb
+      - type: script
+        dest-filename: zephyr-wallet.sh
+        commands:
+          - exec zypak-wrapper /app/lib/zephyr/zephyr "$@"
+    build-commands:
+      - ar x zephyr.deb
+      - tar -xf data.tar.*
+      - mkdir -p /app/lib
+      - cp -a usr/lib/zephyr /app/lib/zephyr
+      - install -Dm755 zephyr-wallet.sh /app/bin/zephyr-wallet
+      - install -Dm644 usr/share/pixmaps/zephyr.png /app/share/icons/hicolor/512x512/apps/dev.lateo.zephyr.png
+      - install -Dm644 usr/share/applications/zephyr.desktop /app/share/applications/dev.lateo.zephyr.desktop
+      - desktop-file-edit --set-key=Exec --set-value='zephyr-wallet %U' --set-icon=dev.lateo.zephyr /app/share/applications/dev.lateo.zephyr.desktop

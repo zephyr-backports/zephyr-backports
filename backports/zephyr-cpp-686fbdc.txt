@@ -1,0 +1,26 @@
+# Backport list for zephyr-cpp, base = fork HEAD 4a99272 on monero-cpp base 686fbdc (2023-05-25).
+# DRAFT 2026-11-05, measured with a cumulative dry cherry-pick (docs/ANALYSIS-REPOS.md §2).
+# Same columns as v2.3.0.txt: <monero-cpp-sha> <release> <class> <status> <description>
+# upstream: monero-cpp https://github.com/woodser/monero-cpp.git master
+# Base for the provenance check: the fork has no upstream tag; use the base commit 4a99272 as <upstream-tag>.
+
+6d6d203 sec.1 dos     picked wallet: get lock before scanning txs (race)
+83832b8 sec.1 memory  picked wallet model: prevent deserialization crash
+48664eb sec.1 memory  picked wallet model: guard unset subaddress index in output query
+44c81a8 sec.1 memory  picked wallet full: add guard for key images hex
+
+6f1b956 sec.2 memory  todo wallet: fix use-after-free when closing while syncing (1 hunk)
+3c80e5b sec.2 memory  todo wallet: fix out of bounds read of subaddress num_blocks_to_unlock (1 hunk)
+069027d sec.2 memory  todo wallet keys: initialize config_normalize.m_primary_address to avoid crash/UB (1 hunk)
+90995d8 sec.2 dos     todo daemon model: prevent monero_tx::get_height crash (1 hunk)
+a199e46 sec.2 dos     todo data model merge: guard optional access (1 hunk)
+1440bb3 sec.2 dos     todo wallet: bound get_txs re-fetch on inconsistency to prevent stack overflow (2 hunks, also rpc files)
+65bd8bb sec.2 memory  todo fix monero_utils nullptr dereference (2 hunks)
+6da75ce sec.2 memory  todo model: validate enum ranges and fix missing else in deserializers (2 hunks)
+d31c128 sec.2 funds   todo wallet: fix segfault in create_txs when a payment is split across txs (4 hunks)
+
+# Out of scope or deferred:
+ee61a09 skip  -       skipped wallet: fix bad_alloc creating multisig txs due to empty lists (multisig is out of scope for the wallet; decided 2026-11-05)
+04f9790 skip  -       skipped wallet rpc: initialize missing non optional fields (monero_wallet_rpc.cpp is not part of the WASM)
+7d97007 skip  -       skipped patch memory leaks using analyzer (2023, +163, conflicts; leak not security under POLICY §2)
+2ff66be skip  -       skipped add guard for monero_wallet_full methods against closed state (14 hunks; semantic)
