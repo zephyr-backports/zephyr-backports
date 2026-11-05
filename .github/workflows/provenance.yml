@@ -1,5 +1,5 @@
 # Reusable workflow (workflow_call) for the security forks: checks that every commit above the
-# upstream tag is a `git cherry-pick -x` from monero/release-v0.18 or an allowed own file,
+# upstream tag is a `git cherry-pick -x` from the fork's upstream branch or an allowed own commit,
 # using tools/check-provenance.sh from this repo. Forks call it from their own
 # .github/workflows/provenance.yml (see fork-files/zephyr/).
 name: provenance (reusable)
@@ -18,13 +18,21 @@ jobs:
         with:
           repository: zephyr-backports/zephyr-backports
           path: .zephyr-backports
-      - name: fetch monero release-v0.18 and the upstream tag
+      - name: fetch the fork's upstream branch and the base tag
         run: |
-          git remote add monero https://github.com/monero-project/monero.git
-          git fetch --no-tags monero release-v0.18
-          ref="${GITHUB_REF_NAME#security/}"
-          [ "$ref" = "$GITHUB_REF_NAME" ] && ref=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-sec.*')
-          git fetch --no-tags https://github.com/ZephyrProtocol/${GITHUB_REPOSITORY#*/}.git "refs/tags/$ref:refs/tags/$ref"
+          case "${GITHUB_REPOSITORY#*/}" in
+            zephyr-cpp)        echo "UP_REMOTE=monero-cpp" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/woodser/monero-cpp.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=master" >> "$GITHUB_ENV";;
+            zephyr-javascript) echo "UP_REMOTE=monero-ts" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/woodser/monero-ts.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=master" >> "$GITHUB_ENV";;
+            zephyr-wallet)     echo "UP_REMOTE=haven" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/haven-protocol-org/haven-web-app.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=master" >> "$GITHUB_ENV";;
+            *)                 echo "UP_REMOTE=monero" >> "$GITHUB_ENV"; echo "UP_URL=https://github.com/monero-project/monero.git" >> "$GITHUB_ENV"; echo "UP_BRANCH=release-v0.18 master" >> "$GITHUB_ENV";;
+          esac
+          if [ -f .github/upstream-base ]; then
+            ref=$(tr -d ' \n' < .github/upstream-base)   # forks without upstream tags pin the base commit here
+          else
+            ref="${GITHUB_REF_NAME#security/}"
+            [ "$ref" = "$GITHUB_REF_NAME" ] && ref=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-sec.*')
+            git fetch --no-tags https://github.com/ZephyrProtocol/${GITHUB_REPOSITORY#*/}.git "refs/tags/$ref:refs/tags/$ref"
+          fi
           echo "BASE_TAG=$ref" >> "$GITHUB_ENV"
-      - name: check provenance
+      - name: check provenance (upstream per fork via UP_REMOTE/UP_URL/UP_BRANCH)
         run: bash .zephyr-backports/tools/check-provenance.sh . "$BASE_TAG"
