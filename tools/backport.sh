@@ -26,16 +26,17 @@ upstream_for() {
     zephyr-cpp)        echo "monero-cpp https://github.com/woodser/monero-cpp.git master" ;;
     zephyr-javascript) echo "monero-ts https://github.com/woodser/monero-ts.git master" ;;
     zephyr-wallet)     echo "haven https://github.com/haven-protocol-org/haven-web-app.git master" ;;
-    *)                 echo "monero https://github.com/monero-project/monero.git release-v0.18" ;;
+    *)                 echo "monero https://github.com/monero-project/monero.git release-v0.18 master" ;;   # master only for the counterpart case of POLICY §2
   esac
 }
 hdr=$(grep -m1 -E '^# upstream: ' "$LIST" | sed 's/^# upstream: //' || true)
-read -r UP_REMOTE UP_URL UP_BRANCH <<<"${hdr:-$(upstream_for "$FORK")}"
-UP_REF="$UP_REMOTE/$UP_BRANCH"
+read -r UP_REMOTE UP_URL UP_BRANCH <<<"${hdr:-$(upstream_for "$FORK")}"   # UP_BRANCH may list several branches
+UP_REF=""; for b in $UP_BRANCH; do UP_REF="$UP_REF $UP_REMOTE/$b"; done; UP_REF=${UP_REF# }
+on_upstream() { local r; for r in $UP_REF; do git merge-base --is-ancestor "$1" "$r" 2>/dev/null && return 0; done; return 1; }
 
 cd "$FORK"
 git remote get-url "$UP_REMOTE" >/dev/null 2>&1 || git remote add "$UP_REMOTE" "$UP_URL"
-git fetch -q "$UP_REMOTE" "$UP_BRANCH"
+for b in $UP_BRANCH; do git fetch -q "$UP_REMOTE" "$b"; done
 [ -z "$(git status --porcelain)" ] || { echo "fork working tree not clean"; exit 1; }
 start_branch=$(git branch --show-current); start=$(git rev-parse HEAD)
 cleanup() {
@@ -55,7 +56,7 @@ while read -r sha rel cls status desc; do
   [ -n "$ONLY" ] && [ "$rel" != "$ONLY" ] && continue
   case "$status" in picked|conflict|skipped) continue;; esac
   [ "$rel" = "skip" ] && continue
-  git merge-base --is-ancestor "$sha" "$UP_REF" || { echo "NOT ON $UP_REF: $sha"; exit 1; }
+  on_upstream "$sha" || { echo "NOT ON $UP_REF: $sha"; exit 1; }
   if git cherry-pick -x --no-edit "$sha" >/dev/null 2>&1; then
     clean=$((clean+1)); printf 'CLEAN     %s %-6s %-8s %s\n' "$sha" "$rel" "$cls" "$desc"
     [ "$DRY" = 1 ] || sed -i -E "s/^($sha +$rel +$cls +)todo /\1picked /" "$LIST"
