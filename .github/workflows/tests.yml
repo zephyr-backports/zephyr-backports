@@ -33,4 +33,11 @@ jobs:
       - name: run the unit tests
         run: |
           cd build
-          ./tests/unit_tests/unit_tests
+          # select_outputs.gamma is a randomised statistical test without a seed (monero-project/monero
+          # issue 8024, "Harden flaky decoy output selection tests"); it is run apart, up to three times.
+          ./tests/unit_tests/unit_tests --gtest_filter=-select_outputs.gamma
+          for i in 1 2 3; do
+            ./tests/unit_tests/unit_tests --gtest_filter=select_outputs.gamma && exit 0
+            echo "select_outputs.gamma failed (attempt $i of 3)"
+          done
+          exit 1
