@@ -1,0 +1,36 @@
+# Reusable workflow (workflow_call) for the zephyr fork: builds the tree with BUILD_TESTS=ON on
+# Ubuntu 22.04 and runs Monero's unit tests, POLICY §6.3 (the unit tests that pass on the upstream
+# tag keep passing). The fork calls it from its own .github/workflows/tests.yml (see fork-files/zephyr/).
+# The package list is the one upstream's build.yml uses for its Ubuntu job.
+name: tests (reusable)
+on:
+  workflow_call:
+jobs:
+  unit-tests:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 150
+    steps:
+      - name: checkout fork at the pull request head, not the synthetic merge commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install build-essential cmake libboost-all-dev miniupnpc libunbound-dev graphviz doxygen libunwind8-dev pkg-config libssl-dev libzmq3-dev libsodium-dev libhidapi-dev libnorm-dev libusb-1.0-0-dev libpgm-dev libprotobuf-dev protobuf-compiler ccache
+      - name: ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-tests-${{ github.sha }}
+          restore-keys: ccache-tests-
+      - name: configure and build the unit tests
+        run: |
+          cmake -S . -B build -D ARCH=default -D BUILD_TESTS=ON -D CMAKE_BUILD_TYPE=Release -D USE_CCACHE=ON
+          cmake --build build -j3 --target unit_tests test_notifier
+      - name: run the unit tests
+        run: |
+          cd build
+          ./tests/unit_tests/unit_tests
