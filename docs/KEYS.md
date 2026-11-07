@@ -65,13 +65,17 @@ git config tag.gpgsign true
 A release:
 ```bash
 FPR=<fingerprint of the release key>
-git -c user.signingkey="$FPR" tag -s v2.3.0-sec.1 \
-  -m "zephyr v2.3.0 (67c5f53b878fef41fb5e74c4382d5b7a2f37fd8a) + 9 security backports; see SECURITY-BACKPORTS.md"
+TZ=UTC git -c user.name="zephyr-backports" -c user.email="zephyr-backports@lateo.dev" -c user.signingkey="$FPR" \
+  tag -s v2.3.0-sec.1 <commit> -F <message file>
+# the message names the full upstream sha and lists the cherry-picks; see SECURITY-BACKPORTS.md
 # artefacts (as soon as they are published through the org):
 sha256sum monero_wallet_full.wasm monero_wallet_keys.wasm build-manifest.json > SHA256SUMS
 gpg -u "$FPR" --clearsign SHA256SUMS            # -> SHA256SUMS.asc
 ```
 The tag message always names the full upstream sha: upstream signs nothing, so the base can only be pinned through that content-addressed sha.
+The **tagger identity must be the release key's identity** (`user.name`/`user.email` as above): GitHub shows a tag as "Verified" only when the
+tagger e-mail is one of the signing key's identities and a verified address of the account; a tag made with the maintainer identity
+but signed with the release key shows "Unverified (bad_email)" even though `git tag -v` says `Good signature` (seen 2026-11-07).
 
 ## 5. Verifying (this is what `keys/README.md` and the home README say, literally)
 ```bash
