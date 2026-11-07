@@ -111,3 +111,6 @@ zephyr-javascript `v2.3.0-sec.1`, zephyr-wallet `v2.3.0-sec.1`) with the release
   steps whose files end up in the deb and fails when an entry of the deb is not world-readable; the macOS and Windows artefact paths
   follow electron-forge 6 defaults and were not built locally; the flatpak runtime 26.08 for Electron 22 is untested
   (25.08 is the step back, in the manifest).
+- First run, 2026-11-07: four dispatches were needed (the retired macOS 14 image, appdmg's native modules without
+  distutils, a space in the Windows installer's name); causes and fixes are in `evidence/wallet/2026-11-07/ci-runs.md`.
+  The web tarball reproduced byte for byte across two runs on GitHub's image.

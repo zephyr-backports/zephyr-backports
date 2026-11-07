@@ -64,7 +64,7 @@ jobs:
           if-no-files-found: error
 
   desktop-mac:
-    runs-on: macos-14
+    runs-on: macos-15   # arm64; the macOS 14 images were retired from GitHub Actions on 2026-11-02
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
     steps:
@@ -77,6 +77,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'   # node-gyp 9 (bundled with npm 8) needs distutils, absent from the image's Python 3.15; appdmg's native modules are built with it
       - name: git dependencies over https
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
       - name: Client build for desktop, copied into the desktop app
@@ -89,6 +92,7 @@ jobs:
         working-directory: zephyr-desktop-app
         run: |
           npm ci
+          node -e "require.resolve('appdmg')"   # the dmg maker's optional native dependency; npm drops a failed optional install silently
           npm run make -- --arch="arm64,x64"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -187,7 +191,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: zephyr-backports/zephyr-backports
-          ref: HOME_SHA   # the reviewer replaces this with the home-repo commit that carries the manifest
+          ref: 8fd70b9978b7f07ee85c29ab5ef00aff74027ed6   # home-repo commit that carries the manifest
           path: home
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -224,11 +228,19 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+      - name: One flat directory, file names without spaces (release assets carry the base name, and GitHub replaces a space by a dot)
+        working-directory: dist
+        run: |
+          set -euo pipefail
+          find . -mindepth 2 -type f -exec mv -t . {} +
+          find . -mindepth 1 -type d -empty -delete
+          for f in *\ *; do [ -e "$f" ] && mv "$f" "${f// /-}"; done
+          ls -l
       - name: SHA256SUMS, unsigned (the owner signs locally)
         working-directory: dist
         run: |
           set -euo pipefail
-          find . -type f ! -name SHA256SUMS -printf '%P\n' | LC_ALL=C sort | xargs -d '\n' sha256sum > SHA256SUMS
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -printf '%P\n' | LC_ALL=C sort | xargs -d '\n' sha256sum > SHA256SUMS
           cat SHA256SUMS
       - name: Draft release with the artefacts and the hashes
         env:
@@ -249,6 +261,6 @@ jobs:
           - the signed tag ${TAG} and the build manifest of the WASM
           - this public build run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           EOF
+          files=(dist/*)
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
-            --title "Zephyr wallet $TAG" --notes-file notes.md \
-            $(find dist -type f | LC_ALL=C sort)
+            --title "Zephyr wallet $TAG" --notes-file notes.md "${files[@]}"
