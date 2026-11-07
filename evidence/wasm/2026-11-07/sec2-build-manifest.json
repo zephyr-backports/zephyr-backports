@@ -1,0 +1,125 @@
+{
+  "schema": "zeph-webwallet/wasm-build-manifest/1",
+  "built_at_utc": "2026-11-07T00:42:22+00:00",
+  "script_sha256": "e92d4ef75ccacc6943c8166178ed0552dba4a218c0f6667ec7ef1bb3bfd68a19",
+  "sources": {
+    "zephyr-javascript": {
+      "pin": "9d022ded",
+      "commit": "9d022ded2a8d188127173aa7cf79fdd5ee006353",
+      "modified_files": [
+        "CMakeLists.txt",
+        "src/main/cpp/zeph_wasm_stubs.c"
+      ],
+      "diff_sha256": "9c778b9d81b7d522cf561ba26af92d9c416cd1e5a0ee8b94c4ee0c7f33e9de2b"
+    },
+    "zephyr-cpp": {
+      "pin": "56abaf9488dce0f6acb04673a9a737e390663b6a",
+      "commit": "56abaf9488dce0f6acb04673a9a737e390663b6a",
+      "modified_files": [
+        "src/wallet/monero_wallet_model.h"
+      ],
+      "diff_sha256": "41242add0756cacce81d95c064afed7aed9b4d42b29a33303f8d237f8cc707be"
+    },
+    "zephyr": {
+      "pin": "1c1982aa7237ef753f49b0b0cb4863f8c3461f03",
+      "commit": "1c1982aa7237ef753f49b0b0cb4863f8c3461f03",
+      "modified_files": [
+        "src/crypto/wallet/CMakeLists.txt"
+      ],
+      "diff_sha256": "946afbd36b142679980c2ebb11b8e8bfe8e9492d610ee71e7e10c2268f9fde8a"
+    }
+  },
+  "patches": [
+    {
+      "path": "tools/wasm/patches/zephyr-javascript/0001-cmake-no-duplicate-bulletproofs.patch",
+      "sha256": "9ac03d1196ab642dc572233647c01615e6174f7ff31dad4ee71d696a8743116d"
+    },
+    {
+      "path": "tools/wasm/patches/zephyr-javascript/0002-rx-slow-hash-stub.patch",
+      "sha256": "039a6376021e19ac04626a05856958258e0b0d4bd772d4f883ae26c48f9b524e"
+    },
+    {
+      "path": "tools/wasm/patches/zephyr-cpp/0001-include-map.patch",
+      "sha256": "a55718fc9d5b3901e0dde380114a4e156e2bfeed2af11973c73c6b0b8700db64"
+    },
+    {
+      "path": "tools/wasm/patches/zephyr/0001-wallet-crypto-library-cn.patch",
+      "sha256": "b7fd0af5761ccc24924279a6d9c293516806181e29ee4e2954b75d9da3b22fa7"
+    }
+  ],
+  "toolchain": {
+    "emsdk": "3.1.10",
+    "emsdk_repo_commit": "d7b4130688bfa348392b921ab04015aa15c4f154",
+    "emcc": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 3.1.10 (c3fe57af0504fe24fc4ba697feb8c204f3c80022)",
+    "cmake": "3.27.9",
+    "cmake_sha256": "72b01478eeb312bf1a0136208957784fe55a7b587f8d9f9142a7fc9b0b9e9a28"
+  },
+  "dependencies": {
+    "boost": {
+      "version": "1.84.0",
+      "sha256": "a5800f405508f5df8114558ca9855d2640a2de8f0445f051fa1c7c3383045724",
+      "linked": true
+    },
+    "openssl": {
+      "version": "3.6.5",
+      "sha256": "a2157c2830efdec3788939b00c9b0638306d3f0bbb76dc4832ee503bb397df98",
+      "linked": false,
+      "note": "headers only"
+    },
+    "unbound": {
+      "version": "1.19.1",
+      "sha256": "bc1d576f3dd846a0739adc41ffaa702404c6767d2b6082deb9f2f97cbb24a3a9",
+      "linked": false,
+      "note": "headers only"
+    }
+  },
+  "flags": {
+    "CFLAGS": "-ffile-prefix-map=$S=/zeph -ffile-prefix-map=$BUILD=/zeph-build",
+    "CXXFLAGS": "-I$BUILD/deps/unbound-1.19.1/libunbound -ffile-prefix-map=$S=/zeph -ffile-prefix-map=$BUILD=/zeph-build",
+    "src_prefix": "/zeph"
+  },
+  "outputs": {
+    "monero_wallet_full.js": {
+      "bytes": 303000,
+      "sha256": "5cd17d48e821f606fff603e9db4fd2a4aba8c8628a452d79ad73434c48ae32ad"
+    },
+    "monero_wallet_full.symbols.txt": {
+      "bytes": 3666784,
+      "sha256": "134c63075540c2c144218d29fd70b63cbf2cc393f5f33a653da8f3f0b48cd49f"
+    },
+    "monero_wallet_full.wasm": {
+      "bytes": 5371461,
+      "sha256": "91e7a0868dce6cde0db8ab013077b19f3b7e3fc950999209082601c0b83483c5"
+    },
+    "monero_wallet_keys.js": {
+      "bytes": 113330,
+      "sha256": "69b02e1e9f12064b845a9d06ed3577a54eeedcafd679dbc283ae515470abe607"
+    },
+    "monero_wallet_keys.wasm": {
+      "bytes": 1168469,
+      "sha256": "fc630b04d52dc500823c9d02383a317bd27e1946b7b20a9bdc141ef29216d13b"
+    }
+  },
+  "live_functions": {
+    "note": "from a separate analysis link of monero_wallet_full with --emit-symbol-map (approximates the shipped binary)",
+    "full": {
+      "functions": 11273,
+      "by_namespace": {
+        "std": 3423,
+        "boost": 2992,
+        "(C / runtime)": 1509,
+        "monero": 414,
+        "tools": 363,
+        "void\\20std": 305,
+        "epee": 302,
+        "cryptonote": 249,
+        "el": 125,
+        "rapidjson": 125,
+        "void\\20boost": 121,
+        "rct": 115,
+        "monero_wasm_bridge": 113,
+        "byn$mgfn-shared$boost": 101
+      }
+    }
+  }
+}

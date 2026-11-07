@@ -87,3 +87,15 @@ Fields identical in all eight runs: `address`, `viewKey`, `spendPub`, `subaddr01
 
 The same upstream dist gave `keysBytes` 1679 in the first run (2026-11-05T03:36Z, kept in
 the local log of that run) and 1694 in this one.
+
+## Erratum (2026-11-07)
+The rows `upstream-opens-sec1` and `upstream-opens-sec2` above did not run upstream's WASM. Their
+`distSha` is that of the sec1 build (`monero_wallet_keys.wasm` `d73e9dbc…`, `monero_wallet_full.wasm`
+`e35b5843…`) and of the sec2 build (`fc630b04…`, `2ba10e6f…`), not upstream's `a541c83c…`/`b4d7413e…`. Each was
+therefore a fork build opening wallet data saved by that same build. Cause: `tools/wasm/test/core-test.cjs` copies
+the four files of `--dist` into `<harness>/dist` and loads them from there. The local runner passed
+`~/tmp/zeph-r3/cache/harness/dist` as "upstream", and after the first run that directory held the last build
+tested. The `upstream` row (`a541c83c…`) and the rows `sec1-opens-upstream` and `sec2-opens-upstream`
+(fork builds opening the data saved by that first `upstream` run) are not affected. The
+cross-open in both directions with upstream's real prebuilt dist, exported unchanged from zephyr-javascript
+`9d022ded`, is in `evidence/wasm/2026-11-07/harness-results.md`. No line above this section was changed.
