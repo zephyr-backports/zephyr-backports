@@ -15,7 +15,7 @@ ZephyrProtocol team, not to us (see [SECURITY.md](https://github.com/zephyr-back
 | Fork | Upstream base | Branch | Latest tag |
 |---|---|---|---|
 | [`zephyr`](https://github.com/zephyr-backports/zephyr) | v2.3.0 (`67c5f53b878fef41fb5e74c4382d5b7a2f37fd8a`) | `security/v2.3.0` | [`v2.3.0-sec.2`](https://github.com/zephyr-backports/zephyr/releases/tag/v2.3.0-sec.2) (30 backports: 10 in [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr/releases/tag/v2.3.0-sec.1), 20 more in sec.2); advisories SB-001 to SB-034 |
-| [`zephyr-cpp`](https://github.com/zephyr-backports/zephyr-cpp) | upstream master (`4a99272f6d7a171cf6625016939094637459975a`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-cpp/releases/tag/v2.3.0-sec.1) (4 backports from monero-cpp); advisories SB-011 to SB-014 |
+| [`zephyr-cpp`](https://github.com/zephyr-backports/zephyr-cpp) | upstream master (`4a99272f6d7a171cf6625016939094637459975a`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-cpp/releases/tag/v2.3.0-sec.1) (4 backports from monero-cpp); advisories SB-011 to SB-014. No further monero-cpp fix applies as a cherry-pick: Zephyr's adaptation rewrote the code they touch (see the list) |
 | [`zephyr-javascript`](https://github.com/zephyr-backports/zephyr-javascript) | upstream master | — | none yet; next: the WASM rebuilt from the two tags above, with a signed build manifest |
 
 The pick lists with per-commit status: [`backports/v2.3.0.txt`](backports/v2.3.0.txt) and
