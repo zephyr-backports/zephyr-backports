@@ -28,6 +28,11 @@ git remote get-url "$UP_REMOTE" >/dev/null 2>&1 || git remote add "$UP_REMOTE" "
 for b in $UP_BRANCH; do git fetch -q "$UP_REMOTE" "$b" 2>/dev/null || true; done
 UP_REF=""; for b in $UP_BRANCH; do UP_REF="$UP_REF $UP_REMOTE/$b"; done; UP_REF=${UP_REF# }
 on_upstream() { local r; for r in $UP_REF; do git merge-base --is-ancestor "$1" "$r" 2>/dev/null && return 0; done; return 1; }
+git rev-parse -q --verify "$BASE^{commit}" >/dev/null || { echo "provenance: $BASE is not a commit or tag in $FORK" >&2; exit 2; }
+if [ "$(git rev-list --count "$BASE..HEAD")" = 0 ]; then
+  echo "provenance: nothing to check, $BASE..HEAD is empty (the second argument is the upstream tag; check out the branch to check)" >&2
+  exit 2
+fi
 fail=0
 for c in $(git rev-list --reverse "$BASE..HEAD"); do
   body=$(git log -1 --format=%B "$c")
