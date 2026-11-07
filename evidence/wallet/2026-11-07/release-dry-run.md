@@ -320,3 +320,206 @@ and the two files that name them (`asset-manifest.json`, `index.html`); `main.9c
 `cmp tools/release/build-wallet.yml fork-files/zephyr-wallet/.github/workflows/build-wallet.yml`: equal (sha256
 `a8c4bb82ea6b6344b5a6851981e198e0daa5df6beb79344108223c386431cf0a`). js-yaml 3.14.1: parses; 6 jobs, 22 named steps, no step
 name with a colon; no tabs; the round-13 grep finds nothing. Not edited.
+
+## Round 26: AppImage from the deb (2026-11-07)
+An AppImage built from the round-24 deb only (`~/tmp/zeph-r7/zw4/zephyr-desktop-app/out/make/deb/x64/zephyr_2.3.0_amd64.deb`,
+80247136 B, sha256 `c7851d24180c50585b67da2d7bbe42b8ce700583c4d43db87dfd2256d7750464`, re-checked before use). No fork
+change, nothing pushed. Work dir `~/tmp/zeph-r7/appimage/`; every command below ran there, the shell's umask is `007`, so each
+step that writes runs under `umask 0022`.
+
+### Tools, pinned
+```
+mkdir -p ~/tmp/zeph-r7/appimage/tools && cd ~/tmp/zeph-r7/appimage/tools
+( umask 0022 && curl -fsSLO https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage \
+  && curl -fsSLO https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64 )
+chmod 0755 appimagetool-x86_64.AppImage
+```
+
+| file | size | sha256 |
+|---|---|---|
+| `appimagetool-x86_64.AppImage` (appimagetool release 1.9.1) | 15092216 B | `ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0` |
+| `runtime-x86_64` (type2-runtime release 20251108) | 944632 B | `2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d` |
+
+Both sizes as in the work order; both hashes equal to the `digest` GitHub's release API (unauthenticated
+`api.github.com/repos/AppImage/<repo>/releases/tags/<tag>`) gives for the asset. Release dates from the same API:
+appimagetool 1.9.1 published 2025-11-18T17:47:57Z; type2-runtime `20251108` published 2025-12-08T17:50:07Z.
+`./appimagetool-x86_64.AppImage --appimage-extract-and-run --version`:
+`appimagetool, continuous build (git version 8c8c91f), build 296 built on 2025-12-04 17:55:56 UTC`. The binary says it was
+built 16 days after the release was published, so the asset was uploaded after that date; the sha256 pin is what fixes
+it. The packed image's runtime reports `AppImage runtime version: https://github.com/AppImage/type2-runtime/commit/dd6cebe`.
+
+### AppRun
+`~/tmp/zeph-r7/appimage/src/AppRun`, sha256 `038b2e46ade0bf3cc5ca3f48e3c9b263161375ee8d71325873b8b87090dba831`, verbatim:
+```sh
+#!/bin/sh
+# Starts the Zephyr wallet inside the AppImage. The setuid sandbox helper cannot work in a mounted
+# AppImage, so Electron's sandbox needs unprivileged user namespaces. When they are not available
+# (disabled, restricted by AppArmor, or no unshare), the wallet is started with --no-sandbox.
+# The probe is electron-builder's (app-builder-lib/src/targets/linux/appimage/appImageUtil.ts).
+HERE=$(dirname "$(readlink -f "$0")")
+BIN="$HERE/usr/lib/zephyr/zephyr"
+for arg in "$@"; do
+  if [ "$arg" = --no-sandbox ]; then
+    exec "$BIN" "$@"
+  fi
+done
+if unshare -Ur true 2>/dev/null; then
+  exec "$BIN" "$@"
+fi
+exec "$BIN" --no-sandbox "$@"
+```
+`sh -n` passes (shellcheck is not installed). Deviation from the work order: the decision is the probe `unshare -Ur true`
+(create a user namespace and map the caller to root in it) instead of reading `/proc/sys/kernel/unprivileged_userns_clone` and `/proc/sys/user/max_user_namespaces`.
+Source: electron-builder `master` (`04585d61`, 2026-11-07),
+`packages/app-builder-lib/src/targets/linux/appimage/appImageUtil.ts` (last changed in `b98e1f29`, 2026-10-24; file sha256
+`78eb3323494ea3d2b7d72c735ae7750dcadfeca2c8e4ec644b40b3e84a7f5ee4`), `generateAppRunScript()`:
+`if [ $HAVE_NO_SANDBOX -eq 0 ] && ! unshare -Ur true 2>/dev/null ; then NO_SANDBOX=(--no-sandbox) fi`. Its comment calls a
+missing `unshare` (exit 127, so `--no-sandbox`) "an intentional fail-safe". The older AppRun template in develar/app-builder
+(`pkg/package-format/appimage/templates/AppRun.sh`, last changed 2019-06-22) has no sandbox logic. electron-builder's
+docs (`website/docs/appimage.md`) describe the current behaviour: with the static runtime, AppRun adds `--no-sandbox` "only when
+unprivileged user namespaces are unavailable". Why the probe and not the two sysctls: test (d) below. In a namespace where no
+further user namespace can be created, the sysctls read `unprivileged_userns_clone=1` and
+`max_user_namespaces=2147483647` (the sysctl test would say "allowed"), and the binary without `--no-sandbox` aborts. The
+probe should also catch Ubuntu 24.04's AppArmor restriction (`kernel.apparmor_restrict_unprivileged_userns`), which neither
+sysctl shows (expected, not verified: that sysctl does not exist on this machine, Debian 13.7, kernel 6.12.115).
+Differences from electron-builder's script: POSIX `sh` instead of bash, no `PATH`/`LD_LIBRARY_PATH`/`XDG_DATA_DIRS`
+exports (the AppDir has no own libraries), no EULA, no `APPDIR` search loop (the work order's `HERE`).
+
+### AppDir
+`~/tmp/zeph-r7/appimage/src/build-appdir.sh` (sha256 `dc37933a23a75b69976bdc7f3be903771da4bf2615dc837efaf175defb84b3da`), run as
+`bash ./src/build-appdir.sh` in the work dir, exit 0, verbatim:
+```bash
+set -e
+umask 0022
+DEB=~/tmp/zeph-r7/zw4/zephyr-desktop-app/out/make/deb/x64/zephyr_2.3.0_amd64.deb
+rm -rf deb-x Zephyr.AppDir
+mkdir deb-x
+dpkg-deb -x "$DEB" deb-x
+mkdir -p Zephyr.AppDir/usr/lib Zephyr.AppDir/usr/share/icons/hicolor/256x256/apps
+cp -a deb-x/usr/lib/zephyr Zephyr.AppDir/usr/lib/zephyr
+cp deb-x/usr/share/applications/zephyr.desktop Zephyr.AppDir/zephyr.desktop
+cp deb-x/usr/share/pixmaps/zephyr.png Zephyr.AppDir/zephyr.png
+cp deb-x/usr/share/pixmaps/zephyr.png Zephyr.AppDir/usr/share/icons/hicolor/256x256/apps/zephyr.png
+ln -s zephyr.png Zephyr.AppDir/.DirIcon
+install -m 0755 src/AppRun Zephyr.AppDir/AppRun
+desktop-file-validate Zephyr.AppDir/zephyr.desktop
+```
+`desktop-file-validate`: no output, exit 0. The desktop file is the deb's byte for byte (`cmp`), so `Exec=zephyr %U` and
+`Icon=zephyr` as round 22 shows them, not edited. `deb-x` (5681 entries) has the deb's mode histogram from round 24
+(5186 `-rw-r--r--`, 1 `-rwsr-xr-x`, 91 `-rwxr-xr-x`, 402 dirs, 1 symlink). `diff -r deb-x/usr/lib/zephyr Zephyr.AppDir/usr/lib/zephyr`:
+equal. AppDir: 5678 entries, 5278 files, 399 directories, 1 symlink (`.DirIcon -> zephyr.png`); 5185 `-rw-r--r--`, 1
+`-rwsr-xr-x` (`usr/lib/zephyr/chrome-sandbox`, as in the deb), 92 `-rwxr-xr-x` (the deb's 91 plus `AppRun`), 399
+`drwxr-xr-x`. `zephyr.png` sha256 `0c7347f6bccbc2bc58e8fae7939ffe3fa04ee3c990b74e344634a158558dfea3`, PNG 256×256. Both WASM copies
+under `usr/lib/zephyr/resources/app/` (`client/` and `node_modules/zephyr-javascript/dist/`):
+`c984b999dd76550ab8135a0d7ddfd34b5fc7774200f8887aaa5f4984a7c7b1e4`. Nothing removed from the deb's tree, no other file added.
+
+### Pack
+```
+( umask 0022 && ARCH=x86_64 ./tools/appimagetool-x86_64.AppImage --appimage-extract-and-run --runtime-file tools/runtime-x86_64 \
+  Zephyr.AppDir zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage ) > pack.log 2>&1
+```
+Exit 0. Log: two warnings (`appstreamcli command is missing`, `AppStream upstream metadata is missing … usr/share/metainfo/zephyr.appdata.xml`),
+`Using architecture x86_64`, mksquashfs: `zstd compressed, data block size 131072`, `Number of inodes 5678`, `Number of files
+5278`, `Number of directories 399`, `Number of symbolic links 1`, uids and gids `root (0)` only; `Embedding ELF...`,
+`Marking the AppImage as executable...`, `Embedding MD5 digest`, `Success`. No update information, no signature.
+
+| artefact | size | sha256 |
+|---|---|---|
+| `zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage` | 98662904 B | `b3f9ce8796d031352da0b58817ace9da6c86d4e87a9321433ebc5cbcc27d5753` |
+
+`file`: `ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), static-pie linked, BuildID[sha1]=a87aaf5da1bf2ef30becedd1aa58e217818fb503, stripped`.
+`--appimage-version`: `AppImage runtime version: https://github.com/AppImage/type2-runtime/commit/dd6cebe`.
+`--appimage-offset`: `944632` (the runtime's size).
+Contents: `unsquashfs -o 944632 -lls zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage`: 5678 lines, the AppDir's entry count, all
+`root/root`, `chrome-sandbox` `-rwsr-xr-x`. `--appimage-extract` into `ex/` (under umask 0022): `squashfs-root` with 5677 entries below it
+(5678 with itself), 5278 files; `diff -r --no-dereference Zephyr.AppDir ex/squashfs-root`: equal; both WASM copies
+`c984b999…`; same mode histogram as the AppDir.
+Mounted with `--appimage-mount`: `/proc/mounts` shows `fuse.zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage ro,nosuid,nodev,relatime,user_id=1000,group_id=1000`;
+`chrome-sandbox` there is `root root 4755`, but the mount is `nosuid`, so the helper cannot work. That is why the sandbox depends on user
+namespaces.
+Repeatability: packing the same `Zephyr.AppDir` a second time gives the same sha256. A second AppDir built with
+the same script in `rebuild/` gives a different image (`bd693893…`, 60521 bytes differ; `unsquashfs -lls` listings equal
+apart from the times). With `SOURCE_DATE_EPOCH=1762473600` (an arbitrary test value, 2025-11-07T00:00:00Z) set for the pack
+command, both AppDirs give the same image, `66ca4a9e5e91afae6edbdfd2cb4cbbce60fcd25da337f41d08af278c4010efe4`, with every
+time in the listing set to that value. This was only a test; the artefact above was packed without it.
+
+### Start tests
+Harness `src/start-test.sh` (sha256 `574717d8beb1ff8b586c3cc9528b2187d7a4f4a3ef7a1a82c40b8ded52e83171`), verbatim:
+```bash
+# usage: start-test.sh <name> <command...>; runs the command 15 s under xvfb-run in a fresh HOME,
+# records stderr, stdout, exit code and, after 8 s, the command lines of the zephyr processes.
+name=$1; shift
+out=~/tmp/zeph-r7/appimage/runs/$name
+rm -rf "$out"; mkdir -p "$out/home"
+( sleep 8; pgrep -a -x zephyr | grep -v -- '--type=' > "$out/main-process.txt" ) &
+HOME="$out/home" XDG_CONFIG_HOME="$out/home/.config" timeout 15 xvfb-run -a "$@" > "$out/stdout.txt" 2> "$out/stderr.txt"
+echo $? > "$out/exit.txt"
+wait
+```
+To make user namespaces unavailable without root, `src/no-userns.sh` (sha256
+`e7923f9ef523e0d04f0499969a3a26210c7d4045b242598901e6ff98b46d0946`) runs the command as the same uid in a user namespace whose
+parent allows only one, already used up. Verbatim:
+```sh
+# usage: no-userns.sh <command...>; runs the command as the same uid in a user namespace in which no
+# further user namespace can be created (max_user_namespaces 1, used up by the inner one).
+uid=$(id -u); gid=$(id -g)
+exec unshare -Ur sh -c 'u=$0; g=$1; shift; echo 1 > /proc/sys/user/max_user_namespaces && exec unshare --user --map-user="$u" --map-group="$g" "$@"' "$uid" "$gid" "$@"
+```
+Inside it: `id -u` 1000, `unshare -Ur true` gives `unshare: unshare failed: No space left on device` (exit 1). On this machine
+outside it: `/dev/fuse` `crw-rw-rw-`, `unprivileged_userns_clone` 1, `max_user_namespaces` 59862, `unshare -Ur true` exit 0.
+The commands, all in one `( umask 0022 … )` in the work dir. `shim/unshare` is `#!/bin/sh` plus `exit 1`, outside the AppDir.
+```
+bash src/start-test.sh base-deb-nosandbox deb-x/usr/lib/zephyr/zephyr --no-sandbox
+bash src/start-test.sh a-appimage-fuse ./zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage
+bash src/start-test.sh b1-apprun-arg-nosandbox ex/squashfs-root/AppRun --no-sandbox
+PATH=$PWD/shim:$PATH bash src/start-test.sh b2-apprun-unshare-fails ex/squashfs-root/AppRun
+bash src/start-test.sh b3-apprun-no-userns sh src/no-userns.sh ex/squashfs-root/AppRun
+bash src/start-test.sh c-apprun-sandbox ex/squashfs-root/AppRun
+bash src/start-test.sh d-binary-sandbox-no-userns sh src/no-userns.sh ex/squashfs-root/usr/lib/zephyr/zephyr
+bash src/start-test.sh e-appimage-extract-and-run ./zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage --appimage-extract-and-run
+```
+
+| test | what | main process after 8 s | exit | stdout |
+|---|---|---|---|---|
+| base | the deb's binary, round 22's command | `…/deb-x/usr/lib/zephyr/zephyr --no-sandbox` | 124 | empty |
+| (a) | the AppImage as is, FUSE mount | `/tmp/user/1000/.mount_zephyrogEAdk/usr/lib/zephyr/zephyr` (no `--no-sandbox`) | 124 | `on App quit called` |
+| (b1) | extracted AppRun, `--no-sandbox` passed | `…/ex/squashfs-root/usr/lib/zephyr/zephyr --no-sandbox` (once) | 124 | `on App quit called` |
+| (b2) | extracted AppRun, `unshare` replaced by `exit 1` | `…/ex/squashfs-root/usr/lib/zephyr/zephyr --no-sandbox` | 124 | `on App quit called` |
+| (b3) | extracted AppRun, user namespaces really unavailable | `…/ex/squashfs-root/usr/lib/zephyr/zephyr --no-sandbox` | 124 | `on App quit called` |
+| (c) | extracted AppRun, user namespaces available | `…/ex/squashfs-root/usr/lib/zephyr/zephyr` (no `--no-sandbox`) | 124 | `on App quit called` |
+| (d) | the binary without `--no-sandbox`, user namespaces unavailable | none (aborted) | **133** | empty |
+| (e) | the AppImage with `--appimage-extract-and-run` | `/tmp/user/1000/appimage_extracted_18af180f…/usr/lib/zephyr/zephyr` (no `--no-sandbox`) | 124 | `on App quit called` |
+
+stderr, base and (a) to (c), (e) (pid/time prefixes dropped): each has the start lines of round 22, in this order:
+`libva error: vaGetDriverNames() failed with unknown libva error`, `ERROR:viz_main_impl.cc(186)] Exiting GPU process due to
+errors during initialization`, the libva line again, `ERROR:gpu_memory_buffer_support_x11.cc(44)] dri3 extension not
+supported.`, in base, b1, b2, b3 also `ERROR:command_buffer_proxy_impl.cc(128)] ContextResult::kTransientFailure: Failed to send
+GpuControl.CreateCommandBuffer.`, then `(node:<pid>) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 connect
+listeners added to [Socket]. Use emitter.setMaxListeners() to increase limit` and ``(Use `zephyr --trace-warnings ...` to show
+where the warning was created)``. At the end, at the SIGTERM, all except base have one to three teardown lines:
+`ERROR:zygote_communication_linux.cc(291)] Failed to send GetTerminationStatus message to zygote` (b2 also
+`zygote_communication_linux.cc(158)] Did not receive ping from zygote child`). The same tests in an earlier set of runs (with a
+broken process filter, so not in the table) had (a) and (c) with empty stdout and no zygote line, and (a) once with
+`ERROR:network_service_instance_impl.cc(521)] Network service crashed, restarting service.` These lines and `on App quit called`
+come from shutdown order (the app gets SIGTERM, or loses the display first). Both sandbox branches show them, and the deb's
+binary showed none in two base runs. No SUID-sandbox message in any test except (d). Nothing about the WASM or the worker.
+(d), verbatim, the whole stderr (3 lines):
+```
+[3647189:1107/231356.331562:FATAL:setuid_sandbox_host.cc(157)] The SUID sandbox helper binary was found, but is not configured correctly. Rather than run without sandboxing I'm aborting now. You need to make sure that ~/tmp/zeph-r7/appimage/ex/squashfs-root/usr/lib/zephyr/chrome-sandbox is owned by root and has mode 4755.
+Trace/breakpoint trap (core dumped)
+[3647193:0100/000000.353841:ERROR:zygote_linux.cc(661)] write: Broken pipe (32)
+```
+So without user namespaces and without `--no-sandbox` the wallet does not start, and (b3) shows that the AppRun probe
+catches exactly that case. (a) and (e) show the default path on a machine with user namespaces: the sandbox is on.
+Side effect of `--appimage-extract-and-run`: the runtime leaves `$TMPDIR/appimage_extracted_<hash>/` in place. That happened
+for the wallet after the timeout kill and for appimagetool even after exit 0 (`--version`). The dirs this round left were
+removed; on a CI runner this costs only disk.
+
+### Round 26, reviewer's check of the workflow job
+The three run steps of the `appimage` job (work repo, `tools/release/build-wallet.yml`), extracted from the YAML with js-yaml
+and run verbatim on a fresh checkout of `v2.3.0-sec.1` with the round-24 deb in `deb/` (the `apt-get` line left out:
+`desktop-file-utils` is installed here): tool hashes OK, AppDir `diff -r`-equal to round 26's (AppRun byte-equal), pack
+6 s, `zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage` 98662904 B, sha256
+`811d5613303db4a0df70b30668a9712dcca1e7ea7c4c7710d39dd456a3fdf245` with `SOURCE_DATE_EPOCH=1794065184` (the tag's commit
+time; the CI build should give the same hash from the same deb). Started 12 s under Xvfb: exit 124, the listener warning,
+no sandbox error.

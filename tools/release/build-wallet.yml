@@ -1,5 +1,5 @@
 # Release build for the zephyr-wallet security fork: web bundle (tarball), macOS dmg and zip for arm64
-# and x64, Windows Squirrel installer, Linux deb and a flatpak bundle, built from a signed tag
+# and x64, Windows Squirrel installer, Linux deb, a flatpak bundle and an AppImage, built from a signed tag
 # vX.Y.Z-sec.N, with SHA256SUMS over all of them in a draft release. The owner verifies SHA256SUMS,
 # signs it with the release key (SHA256SUMS.asc), uploads the signature and publishes the release.
 # No platform code signing (POLICY §7): verification is by the signed hashes, the tag and this run.
@@ -216,8 +216,80 @@ jobs:
           path: zephyr-wallet-*.flatpak
           if-no-files-found: error
 
+  appimage:
+    needs: desktop-linux
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: desktop-linux
+          path: deb
+      - name: appimagetool 1.9.1 and type2-runtime 20251108, pinned by sha256
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends desktop-file-utils
+          mkdir -p tools && cd tools
+          curl -fsSLO https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          curl -fsSLO https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
+          sha256sum -c - <<'SUMS'
+          ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  appimagetool-x86_64.AppImage
+          2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  runtime-x86_64
+          SUMS
+          chmod 0755 appimagetool-x86_64.AppImage
+      - name: AppDir from the deb of this tag (the deb's files unchanged, plus AppRun, desktop file and icon)
+        run: |
+          set -euo pipefail
+          umask 0022
+          debs=(deb/*.deb); [ "${#debs[@]}" = 1 ] || { echo "expected one deb, got ${#debs[@]}"; exit 1; }
+          mkdir deb-x && dpkg-deb -x "${debs[0]}" deb-x
+          mkdir -p Zephyr.AppDir/usr/lib Zephyr.AppDir/usr/share/icons/hicolor/256x256/apps
+          cp -a deb-x/usr/lib/zephyr Zephyr.AppDir/usr/lib/zephyr
+          cp deb-x/usr/share/applications/zephyr.desktop Zephyr.AppDir/zephyr.desktop
+          cp deb-x/usr/share/pixmaps/zephyr.png Zephyr.AppDir/zephyr.png
+          cp deb-x/usr/share/pixmaps/zephyr.png Zephyr.AppDir/usr/share/icons/hicolor/256x256/apps/zephyr.png
+          ln -s zephyr.png Zephyr.AppDir/.DirIcon
+          cat > Zephyr.AppDir/AppRun <<'APPRUN'
+          #!/bin/sh
+          # Starts the Zephyr wallet inside the AppImage. The setuid sandbox helper cannot work in a mounted
+          # AppImage, so Electron's sandbox needs unprivileged user namespaces. When they are not available
+          # (disabled, restricted by AppArmor, or no unshare), the wallet is started with --no-sandbox.
+          # The probe is electron-builder's (app-builder-lib/src/targets/linux/appimage/appImageUtil.ts).
+          HERE=$(dirname "$(readlink -f "$0")")
+          BIN="$HERE/usr/lib/zephyr/zephyr"
+          for arg in "$@"; do
+            if [ "$arg" = --no-sandbox ]; then
+              exec "$BIN" "$@"
+            fi
+          done
+          if unshare -Ur true 2>/dev/null; then
+            exec "$BIN" "$@"
+          fi
+          exec "$BIN" --no-sandbox "$@"
+          APPRUN
+          chmod 0755 Zephyr.AppDir/AppRun
+          desktop-file-validate Zephyr.AppDir/zephyr.desktop
+      - name: Pack, with every time set to the tag's commit time
+        run: |
+          set -euo pipefail
+          umask 0022
+          export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
+          ARCH=x86_64 tools/appimagetool-x86_64.AppImage --appimage-extract-and-run --runtime-file tools/runtime-x86_64 \
+            Zephyr.AppDir "zephyr-wallet-${TAG}-x86_64.AppImage"
+          sha256sum zephyr-wallet-*.AppImage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: appimage
+          path: zephyr-wallet-*.AppImage
+          if-no-files-found: error
+
   hashes:
-    needs: [web, desktop-mac, desktop-windows, desktop-linux, flatpak]
+    needs: [web, desktop-mac, desktop-windows, desktop-linux, flatpak, appimage]
     runs-on: ubuntu-24.04
     permissions:
       contents: write   # only this job may create the draft release
@@ -242,7 +314,17 @@ jobs:
           set -euo pipefail
           find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -printf '%P\n' | LC_ALL=C sort | xargs -d '\n' sha256sum > SHA256SUMS
           cat SHA256SUMS
+      - name: Release already published? Then the assets of this run are added by hand (runbook step 10)
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $TAG exists; nothing is created or uploaded; the artefacts stay with this run"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Draft release with the artefacts and the hashes
+        if: steps.existing.outputs.exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -2,7 +2,7 @@
 
 For `v2.3.0-sec.1`; later tags the same way. The workflow (`.github/workflows/build-wallet.yml` in the zephyr-wallet
 fork) builds the web tarball, macOS dmg and zip (arm64 and x64), the Windows Squirrel installer, the Linux deb and the
-flatpak bundle from a signed tag, and puts them with an unsigned `SHA256SUMS` into a **draft** release. The owner
+flatpak bundle and the AppImage from a signed tag, and puts them with an unsigned `SHA256SUMS` into a **draft** release. The owner
 verifies, signs the hashes with the release key, uploads the signature and publishes. POLICY §7: no platform code
 signing. Never a change to the fork's build configuration (`forge.config.js`, `package.json` scripts, `sh/*`).
 
@@ -57,7 +57,7 @@ The web job prints the tarball's sha256 in its log; the hashes job prints `SHA25
 mkdir -p ~/tmp/release-$TAG && cd ~/tmp/release-$TAG
 gh release download "$TAG" --repo "$REPO"              # the draft release: all artefacts and SHA256SUMS
 sha256sum -c SHA256SUMS                                 # every file OK
-grep -c . SHA256SUMS                                    # web, 2 dmg, 2 zip, exe, deb, flatpak: 8 lines expected
+grep -c . SHA256SUMS                                    # web, 2 dmg, 2 zip, exe, deb, flatpak, AppImage: 9 lines expected
 ```
 
 ## 6. Second builder: compare the web tarball
@@ -114,3 +114,21 @@ zephyr-javascript `v2.3.0-sec.1`, zephyr-wallet `v2.3.0-sec.1`) with the release
 - First run, 2026-11-07: four dispatches were needed (the retired macOS 14 image, appdmg's native modules without
   distutils, a space in the Windows installer's name); causes and fixes are in `evidence/wallet/2026-11-07/ci-runs.md`.
   The web tarball reproduced byte for byte across two runs on GitHub's image.
+
+## 10. Adding an asset to a release that is already published
+When a job is added after a release is out (the AppImage for `v2.3.0-sec.1`), the `hashes` job sees the existing release
+and stops; the new artefact stays with the run. The owner adds it by hand and re-signs the hashes.
+```bash
+RUN=<id of the green run>
+cd ~/tmp/release-$TAG                                     # the directory of step 5, with the verified assets
+gh run download "$RUN" --repo "$REPO" -n appimage -D new && mv new/*.AppImage . && rmdir new
+sha256sum zephyr-wallet-*.AppImage >> SHA256SUMS          # one line appended, base name only
+sha256sum -c SHA256SUMS                                   # every file OK, 9 lines
+rm SHA256SUMS.asc && gpg -u "$FPR" --clearsign SHA256SUMS && gpg --verify SHA256SUMS.asc
+gh release upload "$TAG" zephyr-wallet-*.AppImage SHA256SUMS SHA256SUMS.asc --repo "$REPO" --clobber
+gh release view "$TAG" --repo "$REPO" --json body --jq .body > notes.md
+printf '\nAdded 2026-11-08: the Linux AppImage, built by %s/%s/actions/runs/%s from the deb of this release; SHA256SUMS re-signed.\n' \
+  https://github.com "$REPO" "$RUN" >> notes.md
+gh release edit "$TAG" --repo "$REPO" --notes-file notes.md
+```
+Check from a clean directory: `gh release download "$TAG"`, `gpg --verify SHA256SUMS.asc`, `sha256sum -c SHA256SUMS` (9 OK).

@@ -10,6 +10,7 @@ configuration changed. Run links: `https://github.com/zephyr-backports/zephyr-wa
 | 42398945264 | `857b277a5` (`runs-on: macos-15`) | `desktop-mac` failed in make; `web`, `desktop-linux`, `desktop-windows`, `flatpak` green | `Cannot find module 'appdmg'`: appdmg (optional, darwin, in the lockfile) builds native modules with node-gyp 9, which needs distutils; the image's Python is 3.15; npm 8 drops a failed optional install silently |
 | 42399671015 | `027e5fd15` (setup-python 3.11, appdmg check) | all five build jobs green; `hashes` failed | `no matches found for dist/Zephyr-2.3.0`: the unquoted `find` output split the Windows installer's name ("Zephyr-2.3.0 Setup.exe") at the space; no draft release was created |
 | 42401869253 | `56c4c8ee7` (flat asset names) | **all six jobs green; draft release created** | |
+| 42426310232 | `dc0c50420` (appimage job, guard for an existing release) | all seven jobs green; the guard stopped `hashes` as designed, the AppImage stays with the run | |
 
 ## Run 42399671015: what was built
 Hashes printed by the `hashes` job before it failed (paths as downloaded; the next workflow version flattens them and
@@ -54,3 +55,17 @@ Checked by the reviewer from the downloaded assets (before signing):
   same image): the bundle reproduces on GitHub's runner image; its tree against the VM's build differs only in the four
   chunks named above, `main.*` equal (see above). The installers differ between runs, as expected (timestamps).
 - Release notes as written by the workflow; the run link points at 42401869253.
+
+## Run 42426310232: the AppImage
+`zephyr-wallet-v2.3.0-sec.1-x86_64.AppImage`, 98662904 B, sha256 `fe7e2cacf61c684564ccbd4a024e2df6b3c53ace060e28988910440c951f3805`
+(also printed by the run's `hashes` job before the guard). The `hashes` job found the published release and created and
+uploaded nothing: "release v2.3.0-sec.1 exists; nothing is created or uploaded; the artefacts stay with this run". The owner
+adds the AppImage by hand (runbook step 10).
+
+Reviewer's checks on the downloaded artefact: `--appimage-extract` of the CI AppImage against the reviewer's local build
+of the same workflow steps (`811d5613…`, built from the round-24 deb): 12 `diff -rq` lines, all in
+`usr/lib/zephyr/resources/app/client/`: the four content-hashed chunks `0.*`, `1.*`, `4.*`, `runtime-main.*` (the desktop
+client build differs across checkouts, as the web build does) and `index.html` and `asset-manifest.json` that name them.
+Everything else byte-equal: Electron, `AppRun`, the two WASM copies (`c984b999…`), the desktop file and icon. The hash
+differs from the local one because the CI run built its own deb; from one deb the AppImage is reproducible (dry run,
+round 26). Runtime `type2-runtime/commit/dd6cebe`. Started 12 s under Xvfb: exit 124, the listener warning, no sandbox error.
