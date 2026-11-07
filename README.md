@@ -108,3 +108,12 @@ LICENSE                               BSD-3-Clause for this repo; the forks keep
 misbehaves or does not match its advisory): an issue on the fork or that address. For
 vulnerabilities in Zephyr itself: the ZephyrProtocol team. Proposing a backport:
 [CONTRIBUTING.md](https://github.com/zephyr-backports/.github/blob/main/CONTRIBUTING.md).
+
+## Donations
+
+If these backports are useful to you, donations are welcome at this ZEPH address:
+
+    ZEPHs9cYJZbiwmF7jwny4GHjQcQUy7Mn4WARpfTQ6BppLCkxVoqvsJTE29xmpDM2Ysi8QARgf1ApZ39emp3VSdhj4wD5vLwYYE8
+
+The address is part of this repository's signed history: check the signature of the
+commit that added it before sending.
