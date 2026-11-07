@@ -167,3 +167,148 @@ Against the round-7 manifests (zephyr `54aa43b12`/`16018bb0b`, zephyr-cpp `ac3bb
 exit 0. **All five outputs of both builds are byte-identical to the round-7 builds.** So the published commits
 produce byte for byte the WASM that was built and tested on 2026-11-05. The `full.wasm` difference of the `-pub`
 builds above is the build path alone, as the strings diff showed.
+
+## Release set 2026-11-07 (round 17)
+One build of the release set at the canonical path `/tmp/zeph-wasm/build` (no user name in the path): zephyr
+`v2.3.0-sec.2` `8c6a120256b4bd887d6e7167d929d76e3507e0e5`, zephyr-cpp `v2.3.0-sec.1`
+`3a2ee602ee28e6b7941b617ad4706349ad992641`, zephyr-javascript `9d022ded2a8d188127173aa7cf79fdd5ee006353`. Both
+tags verified (`git tag -v`: good signature, release key, tagger `zephyr-backports`). Copy
+`~/tmp/zeph-r5/webwallet-set` of the webwallet project (`b9ded11`, `tar` copy without `.wasm-work`, `diff -rq`
+identical); `build.sh` differs only in lines 28 and 29 (the comments left as they were):
+```
+-ZEPHYR_CPP_COMMIT=4a99272f       # ZephyrProtocol/zephyr-cpp
+-ZEPHYR_COMMIT=67c5f53b           # ZephyrProtocol/zephyr, tag v2.3.0
++ZEPHYR_CPP_COMMIT=3a2ee602ee28e6b7941b617ad4706349ad992641       # ZephyrProtocol/zephyr-cpp
++ZEPHYR_COMMIT=8c6a120256b4bd887d6e7167d929d76e3507e0e5           # ZephyrProtocol/zephyr, tag v2.3.0
+```
+`build.sh` sha256 `05ff98b3835515d82cac03b8f86ae740586c8f60a36badd15deda6041c8eefc5` (= `script_sha256` in the manifest).
+`ZEPH_SRC` = symlinks to the fork clones (tags fetched first), `WASM_CACHE` = the webwallet project's `.wasm-work`,
+`OMP_THREAD_LIMIT=6`. Build 2026-11-07T14:14:15Z to 14:18:54Z, exit 0; the log confirms the pins
+(`src @ 9d022ded2a8d…`, `zephyr-cpp @ 3a2ee602ee28…`, `zephyr @ 8c6a120256b4…`). Guards: 1 OK; 2 OK (full 10, keys 3
+symbols); 3 OK (595 paths under `/zeph`); 4 OK. Manifest: `set-2026-11-07-build-manifest.json`.
+
+Path checks (`/usr/bin/grep -ao … | wc -l`, the shell's `grep` prints no count for binary files):
+| output | `/tmp/zeph-wasm` | `/home/` |
+|---|---|---|
+| `monero_wallet_full.wasm` | 2 (the two `apply_permutation` lambda strings) | 0 |
+| `monero_wallet_full.js` | 0 | 2, both `/home/web_user` |
+| `monero_wallet_keys.wasm` | 0 | 0 |
+| `monero_wallet_keys.js` | 0 | 2, both `/home/web_user` |
+| `monero_wallet_full.symbols.txt` | 0 | 0 |
+| `build-manifest.json` | 0 | 0 |
+`/home/web_user` is the home directory of emscripten's virtual file system (`FS.mkdir("/home/web_user")`, `"HOME":"/home/web_user"`
+in the glue), present in upstream's prebuilt glue as well; it is not a host path. No host path in any output.
+
+### Outputs against `sec2-build-manifest-r7path.json`
+| output | r7 path (`~/tmp/zeph-r3/build-sec2`) | release set (`/tmp/zeph-wasm/build`) | |
+|---|---|---|---|
+| `monero_wallet_keys.wasm` | `fc630b04d52dc500…` 1168469 B | `fc630b04d52dc500…` 1168469 B | equal |
+| `monero_wallet_keys.js` | `69b02e1e9f12064b…` 113330 B | `69b02e1e9f12064b…` | equal |
+| `monero_wallet_full.js` | `5cd17d48e821f606…` 303000 B | `5cd17d48e821f606…` | equal |
+| `monero_wallet_full.symbols.txt` | `134c63075540c2c1…` | `134c63075540c2c1…` | equal |
+| `monero_wallet_full.wasm` | `2ba10e6fc8bf1c06…` 5371458 B | `c984b999dd76550ab8135a0d7ddfd34b5fc7774200f8887aaa5f4984a7c7b1e4` 5371431 B | different |
+
+Patches, toolchain, dependencies and flags in the two manifests are equal; the `modified_files` of all three sources
+are equal; the zephyr and zephyr-cpp `diff_sha256` are equal. The zephyr-javascript `diff_sha256` differs because that
+`git diff` includes `dist/monero_wallet_full.wasm`, whose blob differs. `full.wasm`:
+`diff <(strings -n 8 <r7>/monero_wallet_full.wasm | sort -u) <(strings -n 8 <set>/monero_wallet_full.wasm | sort -u)`,
+home directory written as `~`:
+```
+9435,9436c9435,9436
+< void tools::apply_permutation(std::vector<size_t>, const F &) [F = (lambda at ~/tmp/zeph-r3/build-sec2/src/external/zephyr-cpp/external/zephyr/src/common/apply_permutation.h:67:34)]
+< void tools::apply_permutation(std::vector<size_t>, const F &) [F = (lambda at ~/tmp/zeph-r3/build-sec2/src/external/zephyr-cpp/external/zephyr/src/cryptonote_core/cryptonote_tx_utils.cpp:1622:41)]
+---
+> void tools::apply_permutation(std::vector<size_t>, const F &) [F = (lambda at /tmp/zeph-wasm/build/src/external/zephyr-cpp/external/zephyr/src/common/apply_permutation.h:67:34)]
+> void tools::apply_permutation(std::vector<size_t>, const F &) [F = (lambda at /tmp/zeph-wasm/build/src/external/zephyr-cpp/external/zephyr/src/cryptonote_core/cryptonote_tx_utils.cpp:1622:41)]
+```
+No other string differs. At byte level it is not a plain substitution: replacing the 33-byte path by the 20-byte one in
+the r7 binary gives 5371432 bytes, one more than this build. Per wasm section: type, import, function, table, memory,
+export and elem are identical; the data section is 27 bytes shorter (818180 → 818153), and the code section (same
+size) and the global section differ. Assessment, not analysed further: the shorter strings shift the memory addresses
+of the data placed after them, which changes address constants in the code and globals and one length byte in
+the data section. The release-set build is what the fork's `dist/` gets.
+
+### Harness
+Runner `~/tmp/zeph-r5/run-harness.sh` (as `run-harness-r12.sh`, `core-test.cjs` of the copy, harness
+`~/tmp/zeph-r3/cache/harness`); "upstream" is `~/tmp/zeph-r3/upstream-dist-9d022ded`, its seven files checked equal
+to `git show 9d022ded:dist/<file>` before the run. Node v22.23.4, node `http://remote-node.zephyrprotocol.com:17767`,
+40-block sync.
+
+### RESULT lines, verbatim
+
+`upstream` (2026-11-07T14:20:12Z … 2026-11-07T14:20:46Z exit=0):
+```
+RESULT {"dist":"~/tmp/zeph-r3/upstream-dist-9d022ded","distSha":{"monero_wallet_keys.wasm":"a541c83c2efdeb39","monero_wallet_full.wasm":"b4d7413ef80f3e59"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902467,"fullAddressMatches":true,"isSynced":true,"walletHeight":902467,"syncSeconds":23.98,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1709,"cacheBytes":29289199,"reopenAddressMatches":true,"reopenHeight":902467,"wrongPassword":"invalid password"}
+```
+
+`set` (2026-11-07T14:20:46Z … 2026-11-07T14:21:23Z exit=0):
+```
+RESULT {"dist":"/tmp/zeph-wasm/build/out","distSha":{"monero_wallet_keys.wasm":"fc630b04d52dc500","monero_wallet_full.wasm":"c984b999dd76550a"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902467,"fullAddressMatches":true,"isSynced":true,"walletHeight":902467,"syncSeconds":25.11,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1658,"cacheBytes":29289199,"reopenAddressMatches":true,"reopenHeight":902467,"wrongPassword":"invalid password"}
+```
+
+`set-opens-upstream` (2026-11-07T14:21:23Z … 2026-11-07T14:21:40Z exit=0):
+```
+RESULT {"dist":"/tmp/zeph-wasm/build/out","distSha":{"monero_wallet_keys.wasm":"fc630b04d52dc500","monero_wallet_full.wasm":"c984b999dd76550a"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902467,"openedFrom":"~/tmp/zeph-r3/upstream-dist-9d022ded","fullAddressMatches":true,"isSynced":true,"walletHeight":902467,"syncSeconds":3.5,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1654,"cacheBytes":29289199,"reopenAddressMatches":true,"reopenHeight":902467,"wrongPassword":"invalid password"}
+```
+
+`upstream-opens-set` (2026-11-07T14:21:40Z … 2026-11-07T14:21:55Z exit=0):
+```
+RESULT {"dist":"~/tmp/zeph-r3/upstream-dist-9d022ded","distSha":{"monero_wallet_keys.wasm":"a541c83c2efdeb39","monero_wallet_full.wasm":"b4d7413ef80f3e59"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902467,"openedFrom":"/tmp/zeph-wasm/build/out","fullAddressMatches":true,"isSynced":true,"walletHeight":902467,"syncSeconds":4.89,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1657,"cacheBytes":29289199,"reopenAddressMatches":true,"reopenHeight":902467,"wrongPassword":"invalid password"}
+```
+
+### Summary
+| run | WASM loaded (`distSha` keys / full) | same keys from the seed as upstream | sync reached the tip (wallet/daemon) | cross-open ok |
+|---|---|---|---|---|
+| `upstream` | upstream `a541c83c…` / `b4d7413e…` | yes | yes (902467/902467) | — (saves data) |
+| `set` | set `fc630b04…` / `c984b999…` | yes | yes (902467/902467) | — (saves data) |
+| `set-opens-upstream` | set | yes | yes (902467/902467) | yes (data saved by upstream's WASM) |
+| `upstream-opens-set` | upstream `a541c83c…` / `b4d7413e…` | yes | yes (902467/902467) | yes (data saved by the set build) |
+
+Fields identical in all four runs: `address`, `viewKey`, `spendPub`, `subaddr01`, `seedRoundtrip`, `validGood`,
+`validBad`, `fullAddressMatches`, `isSynced`, `reserveInfoKeys`, `hfVersion`, `balance`, `cacheBytes` (29289199),
+`reopenAddressMatches`, `wrongPassword`. Per run: heights, `syncSeconds`, `dist`/`distSha`, `openedFrom` (by design),
+`keysBytes` (upstream 1709, set 1658, set-opens-upstream 1654, upstream-opens-set 1657). Both directions open.
+
+## Committed `dist/` of the zephyr-javascript branch tip (round 18)
+The zephyr-javascript fork's `security/v2.3.0` at `7b17a1428` (commits `bbd4fad48` own files, `b8bf3c99f` artefact
+rebuild, `7b17a1428` advisory SB-035; no dependency pin, see `../../deps/2026-11-07/zephyr-javascript-pins.md`). The
+seven `dist/` files and `SHA256SUMS` exported from the commit (`git show 7b17a1428:dist/<file>`) into
+`~/tmp/zeph-r5/tip-dist`; `sha256sum -c SHA256SUMS`: all seven OK. `core-test.cjs` loads only the four WASM/glue
+files (`monero_wallet_{keys,full}.{js,wasm}`); the worker bundle `monero_web_worker.js` is not loaded by the harness.
+The worker bundle built in round 18 from a fresh `npm ci` of the unpinned base lockfile is byte-identical to the one of
+round 17 (same seven hashes). Runner `~/tmp/zeph-r5/run-harness-r18.sh` (as round 17, "upstream" =
+`~/tmp/zeph-r3/upstream-dist-9d022ded`, a fresh upstream save for the cross-open).
+
+### RESULT lines, verbatim
+
+`upstream` (2026-11-07T14:44:04Z … 2026-11-07T14:44:51Z exit=0):
+```
+RESULT {"dist":"~/tmp/zeph-r3/upstream-dist-9d022ded","distSha":{"monero_wallet_keys.wasm":"a541c83c2efdeb39","monero_wallet_full.wasm":"b4d7413ef80f3e59"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902478,"fullAddressMatches":true,"isSynced":true,"walletHeight":902478,"syncSeconds":32.69,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1673,"cacheBytes":29289519,"reopenAddressMatches":true,"reopenHeight":902478,"wrongPassword":"invalid password"}
+```
+
+`tip` (2026-11-07T14:44:51Z … 2026-11-07T14:45:29Z exit=0):
+```
+RESULT {"dist":"~/tmp/zeph-r5/tip-dist","distSha":{"monero_wallet_keys.wasm":"fc630b04d52dc500","monero_wallet_full.wasm":"c984b999dd76550a"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902478,"fullAddressMatches":true,"isSynced":true,"walletHeight":902478,"syncSeconds":25.41,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1681,"cacheBytes":29289519,"reopenAddressMatches":true,"reopenHeight":902478,"wrongPassword":"invalid password"}
+```
+
+`tip-opens-upstream` (2026-11-07T14:45:29Z … 2026-11-07T14:45:47Z exit=0):
+```
+RESULT {"dist":"~/tmp/zeph-r5/tip-dist","distSha":{"monero_wallet_keys.wasm":"fc630b04d52dc500","monero_wallet_full.wasm":"c984b999dd76550a"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902478,"openedFrom":"~/tmp/zeph-r3/upstream-dist-9d022ded","fullAddressMatches":true,"isSynced":true,"walletHeight":902478,"syncSeconds":7.23,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1650,"cacheBytes":29289519,"reopenAddressMatches":true,"reopenHeight":902478,"wrongPassword":"invalid password"}
+```
+
+`upstream-opens-tip` (2026-11-07T14:45:47Z … 2026-11-07T14:46:14Z exit=0):
+```
+RESULT {"dist":"~/tmp/zeph-r3/upstream-dist-9d022ded","distSha":{"monero_wallet_keys.wasm":"a541c83c2efdeb39","monero_wallet_full.wasm":"b4d7413ef80f3e59"},"address":"ZEPHYR2wfJQJuhE9sRQmaRPHPHiYmNpUAcuZubuuHxB3PncwWegLGQTTN5Ziipp1Z9Qt9Ydp8trYGSvWsNy7NrtVA9gUMUGdySS4T","viewKey":"06d996b1d949efe9fe855747e043864a53e22c4d64f80b2578e3616c5ba21601","spendPub":"8641896b116768cbed249a8537e1ca15f2886bd6ab816efaec8dc2883b5ae76d","subaddr01":"ZEPHsBi67Ge57EhkV9xAkPKWs9bFgru2EaP8b4Kvx842jhZVaByJ8E4L3JUaNJmdrv9W9RPqEi2dT8CmFAtHPFyx2PMoj5mqLyB","seedRoundtrip":true,"validGood":true,"validBad":false,"daemonHeight":902478,"openedFrom":"~/tmp/zeph-r5/tip-dist","fullAddressMatches":true,"isSynced":true,"walletHeight":902478,"syncSeconds":5.65,"reserveInfoKeys":"assets,assets_ma,equity,equity_ma,hf_version,liabilities,num_reserves,num_stables,reserve_ratio,reserve_ratio_ma,zeph_reserve,zyield_circ,zyield_rsv","hfVersion":"11","balance":{"ZEPH":"0","ZEPHRSV":"0","ZEPHUSD":"0","ZPH":"0","ZRS":"0","ZSD":"0","ZYIELD":"0","ZYS":"0"},"keysBytes":1675,"cacheBytes":29289519,"reopenAddressMatches":true,"reopenHeight":902478,"wrongPassword":"invalid password"}
+```
+
+### Summary
+| run | WASM loaded (`distSha` keys / full) | sync (wallet/daemon) | cross-open ok |
+|---|---|---|---|
+| `upstream` | upstream `a541c83c…` / `b4d7413e…` | 902478/902478 | — (saves data) |
+| `tip` | tip `fc630b04…` / `c984b999…` | 902478/902478 | — (saves data) |
+| `tip-opens-upstream` | tip | 902478/902478 | yes (data saved by upstream's WASM) |
+| `upstream-opens-tip` | upstream | 902478/902478 | yes (data saved by the tip's WASM) |
+
+All four exit 0. The 14 non-volatile fields (`address`, `viewKey`, `spendPub`, `subaddr01`, `seedRoundtrip`, `validGood`,
+`validBad`, `fullAddressMatches`, `isSynced`, `reserveInfoKeys`, `hfVersion`, `balance`, `reopenAddressMatches`,
+`wrongPassword`) are identical in all four; `cacheBytes` 29289519 in all four; `keysBytes` 1673 / 1681 / 1650 / 1675.

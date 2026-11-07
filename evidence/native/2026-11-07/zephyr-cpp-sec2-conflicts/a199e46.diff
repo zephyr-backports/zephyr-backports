@@ -1,0 +1,19 @@
+diff --cc src/wallet/monero_wallet_model.cpp
+index 0074cca,b5a1564..0000000
+--- a/src/wallet/monero_wallet_model.cpp
++++ b/src/wallet/monero_wallet_model.cpp
+@@@ -65,7 -65,10 +65,14 @@@ namespace monero 
+  
+    void merge_incoming_transfer(std::vector<std::shared_ptr<monero_incoming_transfer>>& transfers, const std::shared_ptr<monero_incoming_transfer>& transfer) {
+      for (const std::shared_ptr<monero_incoming_transfer>& aTransfer : transfers) {
+++<<<<<<< HEAD
+ +      if (aTransfer->m_account_index.get() == transfer->m_account_index.get() && aTransfer->m_subaddress_index.get() == transfer->m_subaddress_index.get() && aTransfer->m_asset_type == transfer->m_asset_type ) {
+++=======
++       if (aTransfer == transfer ||
++           (aTransfer->m_account_index != boost::none && transfer->m_account_index != boost::none &&
++            aTransfer->m_subaddress_index != boost::none && transfer->m_subaddress_index != boost::none &&
++            aTransfer->m_account_index.get() == transfer->m_account_index.get() && aTransfer->m_subaddress_index.get() == transfer->m_subaddress_index.get())) {
+++>>>>>>> a199e46 (data model merge: guard optional access (#149))
+          aTransfer->merge(aTransfer, transfer);
+          return;
+        }

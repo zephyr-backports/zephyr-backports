@@ -11,6 +11,7 @@
 #       and carries the trailer "Origin: zephyr-backports", or
 #   (c) a dependency pin (package.json + lockfile only, trailers Origin + "Advisory: <id>"), or
 #   (d) an artefact rebuild (dist/** or client/public/** only, trailers Origin + one
+#       (POLICY §5 numbers these two own-commit types (a) and (b))
 #       "Built-From: <repo> <tag> <sha>" per source); both per POLICY §5.
 # Anything else fails. Also checks that every cherry-picked sha is listed in SECURITY-BACKPORTS.md.
 set -euo pipefail

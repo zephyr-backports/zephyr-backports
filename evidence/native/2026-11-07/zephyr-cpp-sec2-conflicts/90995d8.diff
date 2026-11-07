@@ -1,0 +1,18 @@
+diff --cc src/daemon/monero_daemon_model.cpp
+index 35597c5,9191abd..0000000
+--- a/src/daemon/monero_daemon_model.cpp
++++ b/src/daemon/monero_daemon_model.cpp
+@@@ -448,8 -490,8 +448,13 @@@ namespace monero 
+    }
+  
+    boost::optional<uint64_t> monero_tx::get_height() const {
+++<<<<<<< HEAD
+ +    if (m_block == boost::none) return boost::none;
+ +    return *((*m_block)->m_height);
+++=======
++     if (m_block == nullptr) return boost::none;
++     return m_block->m_height;
+++>>>>>>> 90995d8 (daemon model: prevent monero_tx::get_height crash (#153))
+    }
+  
+    void monero_tx::merge(const std::shared_ptr<monero_tx>& self, const std::shared_ptr<monero_tx>& other) {

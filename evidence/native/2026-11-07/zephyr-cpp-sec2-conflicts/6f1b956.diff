@@ -1,0 +1,18 @@
+diff --cc src/wallet/monero_wallet_full.cpp
+index 2dad1fd,d946211..0000000
+--- a/src/wallet/monero_wallet_full.cpp
++++ b/src/wallet/monero_wallet_full.cpp
+@@@ -3702,8 -3662,8 +3702,13 @@@ namespace monero 
+  
+    void monero_wallet_full::close(bool save) {
+      MTRACE("close()");
+++<<<<<<< HEAD
+ +    stop_syncing(); // prevent sync thread from starting again
+ +    if (save) this->save();
+++=======
++     if (m_is_closed) return; // closing a closed wallet has no effect
++     stop_syncing(); // prevent sync thread from starting again and interrupt refresh
+++>>>>>>> 6f1b956 (wallet: fix use-after-free when closing while syncing (#114))
+      if (m_sync_loop_running) {
+        m_sync_cv.notify_one();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));  // TODO: in emscripten, m_sync_cv.notify_one() returns without waiting, so sleep; bug in emscripten upstream llvm?

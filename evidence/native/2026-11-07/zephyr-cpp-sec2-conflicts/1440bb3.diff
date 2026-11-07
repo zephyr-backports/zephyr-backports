@@ -1,0 +1,60 @@
+UU src/wallet/monero_wallet_full.cpp
+M  src/wallet/monero_wallet_full.h
+DU src/wallet/monero_wallet_rpc.cpp
+DU src/wallet/monero_wallet_rpc.h
+diff --cc src/wallet/monero_wallet_full.cpp
+index 2dad1fd,b5d6fa2..0000000
+--- a/src/wallet/monero_wallet_full.cpp
++++ b/src/wallet/monero_wallet_full.cpp
+@@@ -1859,16 -1742,14 +1859,23 @@@ namespace monero 
+    std::vector<std::shared_ptr<monero_tx_wallet>> monero_wallet_full::get_txs() const {
+      return get_txs(monero_tx_query());
+    }
+ -
+ +  
+    std::vector<std::shared_ptr<monero_tx_wallet>> monero_wallet_full::get_txs(const monero_tx_query& query) const {
+++<<<<<<< HEAD
+ +    std::vector<std::string> missing_tx_hashes;
+ +    std::vector<std::shared_ptr<monero_tx_wallet>> txs = get_txs(query, missing_tx_hashes);
+ +    if (!missing_tx_hashes.empty()) throw std::runtime_error("Tx not found in wallet: " + missing_tx_hashes[0]);
+ +    return txs;
+ +  }
+ +
+ +  std::vector<std::shared_ptr<monero_tx_wallet>> monero_wallet_full::get_txs(const monero_tx_query& query, std::vector<std::string>& missing_tx_hashes) const {
+++=======
++     return get_txs_aux(query, 5); // bound re-fetches when txs are inconsistent across wallet2 calls
++   }
++ 
++   std::vector<std::shared_ptr<monero_tx_wallet>> monero_wallet_full::get_txs_aux(const monero_tx_query& query, int max_attempts) const {
+++>>>>>>> 1440bb3 (wallet: bound get_txs re-fetch on inconsistency to prevent stack overflow)
+      MTRACE("get_txs(query)");
+ -    assert_not_closed();
+  
+      // copy query
+      std::shared_ptr<monero_tx_query> query_sp = std::make_shared<monero_tx_query>(query); // convert to shared pointer
+@@@ -1950,9 -1833,17 +1957,23 @@@
+  
+      // special case: re-fetch txs if inconsistency caused by needing to make multiple wallet calls  // TODO monero-project: offer wallet.get_txs(...)
+      for (const std::shared_ptr<monero_tx_wallet>& tx : txs) {
+++<<<<<<< HEAD
+ +      if (*tx->m_is_confirmed && tx->m_block == boost::none) {
+ +        std::cout << "WARNING: Inconsistency detected building txs from multiple wallet2 calls, re-fetching" << std::endl;
+ +        return get_txs(*_query, missing_tx_hashes);
+++=======
++       if ((*tx->m_is_confirmed && tx->m_block == nullptr) || (!*tx->m_is_confirmed && tx->m_block != nullptr)) {
++         monero_utils::free(txs);
++         txs.clear();
++         if (max_attempts <= 1) {
++           monero_utils::free(_query);
++           throw std::runtime_error("Unable to build consistent txs from multiple wallet calls");
++         }
++         MWARNING("Inconsistency detected building txs from multiple wallet2 calls, re-fetching");
++         txs = get_txs_aux(*_query, max_attempts - 1);
++         monero_utils::free(_query);
++         return txs;
+++>>>>>>> 1440bb3 (wallet: bound get_txs re-fetch on inconsistency to prevent stack overflow)
+        }
+      }
+  
+* Unmerged path src/wallet/monero_wallet_rpc.cpp
+* Unmerged path src/wallet/monero_wallet_rpc.h

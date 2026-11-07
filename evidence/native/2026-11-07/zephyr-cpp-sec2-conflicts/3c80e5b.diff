@@ -1,0 +1,17 @@
+diff --cc src/wallet/monero_wallet_full.cpp
+index 2dad1fd,be31e18..0000000
+--- a/src/wallet/monero_wallet_full.cpp
++++ b/src/wallet/monero_wallet_full.cpp
+@@@ -3970,8 -3957,7 +3970,12 @@@ namespace monero 
+        cryptonote::subaddress_index index = {account_idx, subaddress_idx};
+        subaddress.m_num_unspent_outputs = count_if(transfers.begin(), transfers.end(), [&](const tools::wallet2::transfer_details& td) { return !td.m_spent && td.m_subaddr_index == index; });
+        subaddress.m_is_used = find_if(transfers.begin(), transfers.end(), [&](const tools::wallet2::transfer_details& td) { return td.m_subaddr_index == index; }) != transfers.end();
+++<<<<<<< HEAD
+ +      // subaddress.m_num_blocks_to_unlock = iter1 == balance_per_subaddress.end() ? 0 : iter2->second.second.first;
+ +      subaddress.m_num_blocks_to_unlock = 0;
+++=======
++       subaddress.m_num_blocks_to_unlock = iter2 == unlocked_balance_per_subaddress.end() ? 0 : iter2->second.second.first;
+++>>>>>>> 3c80e5b (wallet: fix out of bounds read of subaddress num_blocks_to_unlock (#182))
+        subaddresses.push_back(subaddress);
+      }
+  

@@ -33,3 +33,4 @@ SB-031	zephyr	v2.3.0-sec.2	7de175802a48caa7b96e516138de6cdc914bdc76	get_alt_bloc
 SB-032	zephyr	v2.3.0-sec.2	98b350f7a15997f5866c413c16b07e2ee6348922	levin header reads no longer unaligned/aliased
 SB-033	zephyr	v2.3.0-sec.2	4f6652f356f804403f46ecbbb8b90c1c03abbc64	aggregate ZMQ receive size capped
 SB-034	zephyr	v2.3.0-sec.2	d1508916b44d08fa18dc8ac74e04e9f92dbfb2c1	ZMQ-RPC server recovers from oversized requests
+SB-035	zephyr-javascript	v2.3.0-sec.1	8c6a120256b4bd887d6e7167d929d76e3507e0e5	WASM rebuilt from zephyr v2.3.0-sec.2 and zephyr-cpp v2.3.0-sec.1 (artefact)
