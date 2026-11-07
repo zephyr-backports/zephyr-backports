@@ -10,23 +10,28 @@ inventories, the backport lists, the tooling and the keys. The code lives in the
 our own; we only backport fixes that Monero has published. Report Zephyr vulnerabilities to the
 ZephyrProtocol team, not to us (see [SECURITY.md](https://github.com/zephyr-backports/.github/blob/main/SECURITY.md)).
 
-## Status (2026-11-04)
+## Status (2026-11-07)
 
 | Fork | Upstream base | Branch | Latest tag |
 |---|---|---|---|
-| [`zephyr`](https://github.com/zephyr-backports/zephyr) | v2.3.0 (`67c5f53b878fef41fb5e74c4382d5b7a2f37fd8a`) | `security/v2.3.0` | none yet; `v2.3.0-sec.1` (9 backports) is being prepared |
-| [`zephyr-cpp`](https://github.com/zephyr-backports/zephyr-cpp) | upstream master | — | none; only when a backport is needed |
-| [`zephyr-javascript`](https://github.com/zephyr-backports/zephyr-javascript) | upstream master | — | none; C++ bridge only, when needed |
+| [`zephyr`](https://github.com/zephyr-backports/zephyr) | v2.3.0 (`67c5f53b878fef41fb5e74c4382d5b7a2f37fd8a`) | `security/v2.3.0` | [`v2.3.0-sec.2`](https://github.com/zephyr-backports/zephyr/releases/tag/v2.3.0-sec.2) (30 backports: 10 in [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr/releases/tag/v2.3.0-sec.1), 20 more in sec.2); advisories SB-001 to SB-034 |
+| [`zephyr-cpp`](https://github.com/zephyr-backports/zephyr-cpp) | upstream master (`4a99272f6d7a171cf6625016939094637459975a`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-cpp/releases/tag/v2.3.0-sec.1) (4 backports from monero-cpp); advisories SB-011 to SB-014 |
+| [`zephyr-javascript`](https://github.com/zephyr-backports/zephyr-javascript) | upstream master | — | none yet; next: the WASM rebuilt from the two tags above, with a signed build manifest |
 
-The pick list with per-commit status: [`backports/v2.3.0.txt`](backports/v2.3.0.txt). The plan
-per release: [`docs/PLAN-v2.3.0.md`](docs/PLAN-v2.3.0.md).
+The pick lists with per-commit status: [`backports/v2.3.0.txt`](backports/v2.3.0.txt) and
+[`backports/zephyr-cpp-686fbdc.txt`](backports/zephyr-cpp-686fbdc.txt); the advisory index:
+[`backports/advisories.tsv`](backports/advisories.tsv). The plan per release: [`docs/PLAN-v2.3.0.md`](docs/PLAN-v2.3.0.md).
+The test evidence the advisories cite (CI runs, WASM builds and harness, native unit tests, a full
+sync of mainnet from an upstream node, daemon checks) is in [`evidence/`](evidence/).
 
 ## How it works
 
 - **Only clear security issues**: memory safety on untrusted input, key or secret exposure, funds
   at risk in transaction construction, privacy, remote DoS, a dependency with a current CVE. No
   features, refactors, correctness-only fixes or dependency bumps.
-- **Only `git cherry-pick -x`** of commits from `monero-project/monero` (`release-v0.18`).
+- **Only `git cherry-pick -x`** of commits from `monero-project/monero` (`release-v0.18`, or the
+  same fix as it landed on `master` when that version also fixes code the base carries), and from
+  `woodser/monero-cpp` for zephyr-cpp.
   Conflicts are resolved context-only inside the same commit. A semantic conflict means skip.
 - **Never breaks compatibility** with upstream: no consensus, relay, p2p, RPC or file-format
   changes. Fork and upstream interoperate both ways; the version string stays the upstream one.
@@ -69,13 +74,19 @@ docs/INVENTORY-MONERO-2024-2026.md    Monero fixes since Zephyr's base commit, g
 docs/BASELINE.md                      how Zephyr relates to Monero (measured), how to reproduce the inventory
 docs/KEYS.md                          keys: roles, creation, publication, verification, rotation, expiry
 docs/ADVISORY-TEMPLATE.md             one advisory per backport
-backports/v2.3.0.txt                  ordered pick list with status (read by tools/backport.sh)
+backports/v2.3.0.txt                  ordered pick list for zephyr with status (read by tools/backport.sh)
+backports/zephyr-cpp-686fbdc.txt      the same for zephyr-cpp
+backports/advisories.tsv              advisory index: id, fork, tag, upstream sha, title
+evidence/                             test evidence the advisories cite, by kind and date; files are added, never edited
 tools/backport.sh                     cherry-pick in order, stop on conflict, dry-run mode
 tools/check-provenance.sh             the provenance check (fork CI and local)
 tools/inventory.sh                    rebuild the inventory from monero/release-v0.18
-fork-files/zephyr/                    files that go into the fork: README section, SECURITY-BACKPORTS.md, CI caller
+fork-files/<fork>/                    files that go into a fork: README section, SECURITY-BACKPORTS.md, CI callers
+tools/release/                        release tooling drafts (wallet build workflow, WASM builder image, flatpak)
+tools/protect.sh                      applies the branch rulesets of the public repos
 keys/                                 public keys and fingerprints
-.github/workflows/provenance.yml      reusable workflow the forks call
+.github/workflows/provenance.yml      reusable provenance workflow the forks call
+.github/workflows/tests.yml           reusable unit-test workflow (Monero's unit tests on the fork tree)
 LICENSE                               BSD-3-Clause for this repo; the forks keep upstream's licence
 ```
 
