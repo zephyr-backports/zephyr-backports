@@ -18,6 +18,16 @@ ZephyrProtocol team, not to us (see [SECURITY.md](https://github.com/zephyr-back
 | [`zephyr-cpp`](https://github.com/zephyr-backports/zephyr-cpp) | upstream master (`4a99272f6d7a171cf6625016939094637459975a`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-cpp/releases/tag/v2.3.0-sec.1) (4 backports from monero-cpp); advisories SB-011 to SB-014. No further monero-cpp fix applies as a cherry-pick: Zephyr's adaptation rewrote the code they touch (see the list) |
 | [`zephyr-javascript`](https://github.com/zephyr-backports/zephyr-javascript) | upstream master | — | none yet; next: the WASM rebuilt from the two tags above, with a signed build manifest |
 
+## Release sets
+
+Each fork counts its own backport batches in `-sec.N` (Debian-style: a package revision), so the
+numbers differ between forks and that is not a lag. A release set says which tags belong together;
+the WASM built from a set carries both in its build manifest and `Built-From:` trailers.
+
+| Set | zephyr | zephyr-cpp | WASM (zephyr-javascript) | zephyr-wallet |
+|---|---|---|---|---|
+| 2026-11-07 | `v2.3.0-sec.2` (`8c6a12025`) | `v2.3.0-sec.1` (`3a2ee602e`) | next: rebuilt from these two, signed manifest | next: pins to that build |
+
 The pick lists with per-commit status: [`backports/v2.3.0.txt`](backports/v2.3.0.txt) and
 [`backports/zephyr-cpp-686fbdc.txt`](backports/zephyr-cpp-686fbdc.txt); the advisory index:
 [`backports/advisories.tsv`](backports/advisories.tsv). The plan per release: [`docs/PLAN-v2.3.0.md`](docs/PLAN-v2.3.0.md).
