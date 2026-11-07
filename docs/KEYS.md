@@ -93,7 +93,7 @@ For the curious: `gpg --check-sigs zephyr-backports@lateo.dev` shows the certifi
 - A second maintainer later: own commit key, certified by the maintainer key; the release key stays with one person (the release manager) or is replaced by "every release signed by two maintainers". That decision is taken then, not now.
 
 ## 7. State and expiry
-Created 2026-11-04. Primary `FB39 94F0 997C A6F0 43D7 2491 9EFF 03F5 27D2 40A1` (certify-only), signing subkey `AFCB 1596 42DE 74B6 5D18 3AA2 0937 555B 1B70 815A`, both valid until **2028-11-03**. Certified by the maintainer key `31DA 39AB 43E0 CA67 F1F3 A661 BA2A FF22 DF8A 4A13` (no expiry). WKD hash for `zephyr-backports@lateo.dev`: `pisc8e8b1xjprod7jok65zzkr74rshsr`. Public files: `keys/`. The release key is registered on the maintainer's GitHub account with the address verified.
+Created 2026-11-04. Primary `FB39 94F0 997C A6F0 43D7 2491 9EFF 03F5 27D2 40A1` (certify-only), signing subkey `AFCB 1596 42DE 74B6 5D18 3AA2 0937 555B 1B70 815A`, both valid until **2028-11-03**. Certified by the maintainer key `31DA 39AB 43E0 CA67 F1F3 A661 BA2A FF22 DF8A 4A13` (no expiry). Public files: `keys/`. The release key is registered on the maintainer's GitHub account with the address verified.
 
 **Calendar: 2028-10-01.** A month of slack. First test the offline backup (import into a temporary `GNUPGHOME`; `sec` must appear), then choose:
 
