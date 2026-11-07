@@ -34,3 +34,6 @@ SB-032	zephyr	v2.3.0-sec.2	98b350f7a15997f5866c413c16b07e2ee6348922	levin header
 SB-033	zephyr	v2.3.0-sec.2	4f6652f356f804403f46ecbbb8b90c1c03abbc64	aggregate ZMQ receive size capped
 SB-034	zephyr	v2.3.0-sec.2	d1508916b44d08fa18dc8ac74e04e9f92dbfb2c1	ZMQ-RPC server recovers from oversized requests
 SB-035	zephyr-javascript	v2.3.0-sec.1	8c6a120256b4bd887d6e7167d929d76e3507e0e5	WASM rebuilt from zephyr v2.3.0-sec.2 and zephyr-cpp v2.3.0-sec.1 (artefact)
+SB-036	zephyr-wallet	v2.3.0-sec.1	7b17a14280bd84ca783287f4640b3c744d25319f	wallet WASM (web and desktop) from zephyr-javascript v2.3.0-sec.1 (artefact)
+SB-037	zephyr-wallet	v2.3.0-sec.1	7b17a14280bd84ca783287f4640b3c744d25319f	client: wallet library at the zephyr-javascript fork tag and dependency pins (10 GHSAs)
+SB-038	zephyr-wallet	v2.3.0-sec.1	7b17a14280bd84ca783287f4640b3c744d25319f	desktop: wallet library at the zephyr-javascript fork tag and dependency pins (38 GHSAs)

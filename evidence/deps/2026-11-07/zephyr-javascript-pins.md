@@ -1,7 +1,7 @@
 # zephyr-javascript dependency pins, measured again (round 17, 2026-11-07)
 
 Scratch clone `~/tmp/zeph-r5/zjs-pin` of the fork at `9d022ded2a8d188127173aa7cf79fdd5ee006353`; Node v22.23.4,
-npm 10.9.9, the same as `.agent/DEPENDENCY-PINS.md` (2026-11-05). Nothing of this is committed to the fork.
+npm 10.9.9, the same as the measurement of 2026-11-05 (private work notes). Nothing of this is committed to the fork.
 
 ## The lockfile change
 `npm audit fix --package-lock-only --omit=dev --ignore-scripts` (the 2026-11-05 command): exit 1 (vulnerabilities
