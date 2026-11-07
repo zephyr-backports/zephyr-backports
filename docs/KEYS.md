@@ -9,7 +9,7 @@
 | **Maintainer key** (the maintainer's existing personal key) | pseudonym, existing e-mail address | commits in the forks and the home repo; **certifies** the release key | as now |
 | **Release key** `zephyr-backports` | `zephyr-backports <zephyr-backports@lateo.dev>` | tags `vX.Y.Z-sec.N`, `SHA256SUMS`, build manifests | primary (certify-only) offline; signing subkey on the workstation or a hardware token |
 
-Why two: the release key can be handed over and rotated without the maintainer's commit identity changing, and a second maintainer later gets their own commit key while releases keep a single signature. The trust chain stays short: `lateo.dev` → maintainer key → (certification) → release key → tag.
+Why two: the release key can be handed over and rotated without the maintainer's commit identity changing, and a second maintainer later gets their own commit key while releases keep a single signature. The trust chain stays short: fingerprint in the home repo and on `keys.openpgp.org` (e-mail verified) → maintainer key → (certification) → release key → tag.
 
 What a signature proves: who made the tag or the file. Not that the content is safe; that is proven by the provenance check, the compatibility tests and the advisories (`POLICY.md` §6).
 
@@ -24,7 +24,7 @@ FPR=$(gpg --list-keys --with-colons zephyr-backports@lateo.dev | awk -F: '/^fpr/
 gpg --quick-add-key "$FPR" ed25519 sign 2y
 gpg --output zephyr-backports-revoke.asc --gen-revoke "$FPR"      # keep offline, next to the primary
 gpg -u <maintainer-key-id> --quick-sign-key "$FPR"                 # certify with the maintainer key
-gpg --armor --export "$FPR" > zephyr-backports.asc                 # public key for keys/ and lateo.dev; after the certification
+gpg --armor --export "$FPR" > zephyr-backports.asc                 # public key for keys/ and keys.openpgp.org; after the certification
 ```
 
 Take the primary off the workstation, keep only the subkey:
@@ -49,12 +49,11 @@ Notes:
    keys/README.md                  roles, fingerprints, verification commands (§5)
    keys/zephyr-backports.asc       release key (public)
    keys/<maintainer>.asc           maintainer key (public)
-   keys/wkd/openpgpkey/            ready-to-serve WKD directory for lateo.dev
    ```
    Fingerprints in the main README as well. After a rotation, old keys stay with an `EXPIRED`/`REVOKED` note so that old tags remain verifiable.
-2. **`lateo.dev`:** both fingerprints on the placeholder page; WKD entry for `zephyr-backports@lateo.dev`: serve the directory `keys/wkd/openpgpkey/` verbatim as `.well-known/openpgpkey/` (`hu/<hash>` is the binary key, `policy` an empty file, with the header `Access-Control-Allow-Origin: *`; the hash comes from `gpg --with-wkd-hash --fingerprint zephyr-backports@lateo.dev`); in `security.txt` an `Encryption:` line pointing at `keys/loki-notfound.asc` (the maintainer key: the release key has no encryption subkey). Test: `gpg --locate-external-keys zephyr-backports@lateo.dev`.
+2. **`keys.openpgp.org`:** upload the release key and confirm the e-mail address (done 2026-11-07), so that `gpg --keyserver hkps://keys.openpgp.org --recv-keys <fingerprint>` and a lookup by address both work. A WKD on `lateo.dev` is not set up: that site is not only this project's, and may follow later together with the rest of it; until then `lateo.dev` is the mail domain only.
 3. **GitHub:** add the release key to the maintainer's account, with `zephyr-backports@lateo.dev` as a verified e-mail address on that account. Otherwise GitHub shows the tags as "Unverified"; offline they remain verifiable, but the community looks at that badge. Organisation-level domain verification does not count for this; the badge is decided per user account.
-4. Optionally `keys.openpgp.org` (verifies the e-mail address); no SKS keyservers.
+4. No SKS keyservers.
 
 ## 4. Use
 Git settings in every fork and in the home repo (commits: maintainer key, i.e. the default `user.signingkey`):
@@ -79,8 +78,8 @@ but signed with the release key shows "Unverified (bad_email)" even though `git 
 
 ## 5. Verifying (this is what `keys/README.md` and the home README say, literally)
 ```bash
-gpg --locate-keys zephyr-backports@lateo.dev          # via WKD on lateo.dev
-gpg --fingerprint zephyr-backports@lateo.dev          # compare with lateo.dev and keys/README.md
+gpg --keyserver hkps://keys.openpgp.org --recv-keys FB3994F0997CA6F043D724919EFF03F527D240A1   # or import keys/*.asc
+gpg --fingerprint zephyr-backports@lateo.dev          # compare with keys/README.md
 git verify-tag v2.3.0-sec.1                           # the tag
 gpg --verify SHA256SUMS.asc && sha256sum -c SHA256SUMS   # the artefacts
 ```
@@ -90,7 +89,7 @@ For the curious: `gpg --check-sigs zephyr-backports@lateo.dev` shows the certifi
 - Primary and revocation certificate offline, in two places. Never on the workstation or on network storage.
 - The subkey expires after 2 years: set a reminder; extend (`gpg --quick-set-expire`) or rotate. Details in §7.
 - **Rotation:** certify the new release key with the maintainer key and with the old release key; announce it in the home README and in a message signed with the old key; leave the old key in `keys/`.
-- **Compromise:** publish the revocation certificate (home repo, lateo.dev, keyserver), new key as with a rotation, reassess all tags since the last known good moment and re-tag them (`-sec.N+1`), advisory about it.
+- **Compromise:** publish the revocation certificate (home repo, keys.openpgp.org), new key as with a rotation, reassess all tags since the last known good moment and re-tag them (`-sec.N+1`), advisory about it.
 - A second maintainer later: own commit key, certified by the maintainer key; the release key stays with one person (the release manager) or is replaced by "every release signed by two maintainers". That decision is taken then, not now.
 
 ## 7. State and expiry
@@ -107,11 +106,10 @@ gpg --quick-set-expire "$FPR" 2y            # primary
 gpg --quick-set-expire "$FPR" 2y '*'        # all subkeys
 gpg --export-secret-keys "$FPR" > /offline/zephyr-backports-primary-SECRET.gpg   # replace the backup, in both places
 gpg --armor --export "$FPR" > zephyr-backports.asc
-gpg --export "$FPR" > pisc8e8b1xjprod7jok65zzkr74rshsr                          # new WKD file (binary)
 rm -rf "$GNUPGHOME"; unset GNUPGHOME
 gpg --import zephyr-backports.asc           # workstation: stub and subkey get the new date
 ```
-Then republish everywhere listed in §3: `keys/zephyr-backports.asc` in the home repo, the WKD file on `lateo.dev`, `keys.openpgp.org`, and on GitHub **delete and re-add** the key (GitHub reads the expiry only at upload). The certification by the maintainer key does not need redoing: it sits on the UID and has no end date of its own.
+Then republish everywhere listed in §3: `keys/zephyr-backports.asc` in the home repo, `keys.openpgp.org`, and on GitHub **delete and re-add** the key (GitHub reads the expiry only at upload). The certification by the maintainer key does not need redoing: it sits on the UID and has no end date of its own.
 
 **Rotate** if something has to change anyway (hardware token, second maintainer, doubt about the backup): new key per §2, certify with the maintainer key and with the old release key, announce with a message signed by the old key, leave the old key in `keys/` marked `EXPIRED`.
 

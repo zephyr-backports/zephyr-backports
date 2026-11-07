@@ -51,7 +51,7 @@ certifies the release key. Details and rotation: [`keys/README.md`](keys/README.
 | Maintainer key `loki-notfound` | `31DA 39AB 43E0 CA67 F1F3  A661 BA2A FF22 DF8A 4A13` |
 
 ```bash
-gpg --locate-keys zephyr-backports@lateo.dev          # via WKD on lateo.dev, or import keys/*.asc
+gpg --keyserver hkps://keys.openpgp.org --recv-keys FB3994F0997CA6F043D724919EFF03F527D240A1   # or import keys/*.asc
 gpg --fingerprint zephyr-backports@lateo.dev          # compare with the table above
 git verify-tag v2.3.0-sec.1                           # a release tag
 gpg --verify SHA256SUMS.asc && sha256sum -c SHA256SUMS   # published artefacts, when any
@@ -74,7 +74,7 @@ tools/backport.sh                     cherry-pick in order, stop on conflict, dr
 tools/check-provenance.sh             the provenance check (fork CI and local)
 tools/inventory.sh                    rebuild the inventory from monero/release-v0.18
 fork-files/zephyr/                    files that go into the fork: README section, SECURITY-BACKPORTS.md, CI caller
-keys/                                 public keys, fingerprints, WKD files
+keys/                                 public keys and fingerprints
 .github/workflows/provenance.yml      reusable workflow the forks call
 LICENSE                               BSD-3-Clause for this repo; the forks keep upstream's licence
 ```

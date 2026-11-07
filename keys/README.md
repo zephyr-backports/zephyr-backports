@@ -14,8 +14,6 @@ Files:
 ```
 keys/zephyr-backports.asc   release key (public), certified by the maintainer key
 keys/loki-notfound.asc      maintainer key (public)
-keys/wkd/openpgpkey/        ready-to-serve Web Key Directory for lateo.dev: copy as .well-known/openpgpkey/
-                            (hu/<hash> is the binary release key, policy is an empty file)
 ```
 
 Mail to `zephyr-backports@lateo.dev` is received and answered from the maintainer's address,
@@ -24,14 +22,14 @@ release key has no encryption subkey.
 
 The release key's primary is certify-only (`[C]`), created 2026-11-04, expires 2028-11-03. The
 primary is kept offline; only the signing subkey is on the release machine. Trust chain:
-`lateo.dev` → maintainer key → (certification) → release key → tag.
+fingerprint here and on `keys.openpgp.org` (e-mail verified) → maintainer key → (certification) → release key → tag.
 
 ## Verify
 
 ```bash
-# fetch the release key via WKD (lateo.dev), or import keys/*.asc
-gpg --locate-keys zephyr-backports@lateo.dev
-gpg --fingerprint zephyr-backports@lateo.dev     # compare with the table above and with lateo.dev
+# fetch the release key from keys.openpgp.org by its fingerprint, or import keys/*.asc
+gpg --keyserver hkps://keys.openpgp.org --recv-keys FB3994F0997CA6F043D724919EFF03F527D240A1
+gpg --fingerprint zephyr-backports@lateo.dev     # compare with the table above
 
 # a release tag
 git verify-tag v2.3.0-sec.1
@@ -56,4 +54,4 @@ in each fork's `SECURITY-BACKPORTS.md` are for.
 
 Old keys stay in this directory after rotation, marked `EXPIRED` or `REVOKED` here, so that old
 tags remain verifiable. A new release key is certified by the maintainer key and by the old
-release key. A revocation is published here, on `lateo.dev` and on `keys.openpgp.org`.
+release key. A revocation is published here and on `keys.openpgp.org`.
