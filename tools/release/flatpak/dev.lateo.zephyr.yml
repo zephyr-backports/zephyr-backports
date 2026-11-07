@@ -1,8 +1,8 @@
-# DRAFT, not run. flatpak-builder manifest for the Zephyr desktop wallet as built by the
-# zephyr-wallet security fork. It repackages the deb that the same tag's `desktop-linux` job
-# produced (tools/release/build-wallet.yml copies it here as zephyr.deb); nothing is rebuilt and
-# the fork's build config is not touched (upstream's maker-flatpak is disabled, electron-forge
-# issue #2561).
+# flatpak-builder manifest for the Zephyr desktop wallet as built by the zephyr-wallet security fork.
+# It repackages the deb that the `desktop-linux` job of the same tag produced (the fork's
+# .github/workflows/build-wallet.yml downloads that artefact and copies it here as zephyr.deb);
+# nothing is rebuilt and the fork's build config is not touched (upstream's maker-flatpak is disabled,
+# electron-forge issue #2561).
 #
 # Runtime choice: org.freedesktop.Platform 26.08 with org.electronjs.Electron2.BaseApp 26.08,
 # the newest YY.08 branch present in both, from a read-only `git ls-remote --heads` on 2026-11-05:
@@ -15,11 +15,17 @@
 # flatpak-builder is not installed on the workstation; the first CI run decides, with 25.08 as
 # the step back.
 #
-# The paths inside the deb (/usr/lib/zephyr, /usr/share/applications/zephyr.desktop,
-# /usr/share/pixmaps/zephyr.png) follow electron-installer-debian's defaults for
-# name "zephyr" (zephyr-desktop-app/forge.config.js) and need checking against a real deb.
-# The icon is installed as 512x512 without measuring it; check `icons/icon.png` and adjust the
-# hicolor directory to its real size.
+# Checked against the deb of tag v2.3.0-sec.1 built on 2026-11-07 (zephyr_2.3.0_amd64.deb, electron-forge's
+# maker-deb with electron-installer-debian 3.2.0, on the workstation):
+#   - app tree /usr/lib/zephyr with the binary /usr/lib/zephyr/zephyr (asar off), /usr/bin/zephyr ->
+#     ../lib/zephyr/zephyr, icon /usr/share/pixmaps/zephyr.png (PNG 256x256), desktop file
+#     /usr/share/applications/zephyr.desktop (Name=zephyr, Exec=zephyr %U, Icon=zephyr); no other icon sizes;
+#   - every build command below was run as a shell script against that deb with /app replaced by a scratch
+#     directory: all succeed, and the edited desktop file passes desktop-file-validate.
+# Not checked: the flatpak build itself (flatpak-builder is not installed on the workstation), the runtime
+# 26.08 for Electron 22, the finish-args. The files of /usr/lib/zephyr/resources/app keep the modes of the
+# tree the deb was built from (`cp -a`): the deb must be built with umask 0022 throughout, or the app is not
+# readable for other users inside the flatpak either.
 app-id: dev.lateo.zephyr
 runtime: org.freedesktop.Platform
 runtime-version: '26.08'
@@ -52,6 +58,6 @@ modules:
       - mkdir -p /app/lib
       - cp -a usr/lib/zephyr /app/lib/zephyr
       - install -Dm755 zephyr-wallet.sh /app/bin/zephyr-wallet
-      - install -Dm644 usr/share/pixmaps/zephyr.png /app/share/icons/hicolor/512x512/apps/dev.lateo.zephyr.png
+      - install -Dm644 usr/share/pixmaps/zephyr.png /app/share/icons/hicolor/256x256/apps/dev.lateo.zephyr.png
       - install -Dm644 usr/share/applications/zephyr.desktop /app/share/applications/dev.lateo.zephyr.desktop
       - desktop-file-edit --set-key=Exec --set-value='zephyr-wallet %U' --set-icon=dev.lateo.zephyr /app/share/applications/dev.lateo.zephyr.desktop

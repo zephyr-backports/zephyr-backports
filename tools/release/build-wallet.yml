@@ -1,34 +1,30 @@
-# DRAFT, not run. Release build for the zephyr-wallet security fork (lives in the fork as
-# .github/workflows/build-wallet.yml once reviewed). Triggered by a signed tag vX.Y.Z-sec.N.
+# Release build for the zephyr-wallet security fork: web bundle (tarball), macOS dmg and zip for arm64
+# and x64, Windows Squirrel installer, Linux deb and a flatpak bundle, built from a signed tag
+# vX.Y.Z-sec.N, with SHA256SUMS over all of them in a draft release. The owner verifies SHA256SUMS,
+# signs it with the release key (SHA256SUMS.asc), uploads the signature and publishes the release.
+# No platform code signing (POLICY §7): verification is by the signed hashes, the tag and this run.
 #
-# Produces: web bundle (tarball), macOS dmg arm64 + x64, Windows Squirrel installer, Linux deb,
-# flatpak bundle; then SHA256SUMS over all of them, attached to a DRAFT release, unsigned. The
-# owner downloads SHA256SUMS, verifies it against the artefacts, signs it locally with the release
-# key (SHA256SUMS.asc), uploads the signature and publishes the release (POLICY §7: no platform
-# code signing; verification is by the GPG-signed hashes and this public run).
-#
-# Differences from upstream's disabled workflows (*.yml-old), on purpose:
-#   - `npm ci` from the lockfile only: no `npm install`, no `npm audit fix`, no
-#     `npm install zephyr-javascript@latest` during the build (all three made upstream's builds
-#     depend on the day they ran);
-#   - mainnet only (REACT_APP_NET_TYPE_ID=0), no S3 upload, no third-party actions;
-#   - every action pinned by commit sha (tag in the comment, looked up 2026-11-05).
-# Open points for the first run (estimates, not verified):
-#   - Node 16: react-scripts 4 / webpack 4 do not build on Node >= 17 without
-#     NODE_OPTIONS=--openssl-legacy-provider; upstream used Node 14. Electron 22 bundles its own Node.
-#   - the lockfiles resolve zephyr-javascript over git+ssh; the insteadOf rule rewrites that to https.
-#   - artefact file names follow electron-forge 6 defaults and may need adjusting.
+# Runs on a pushed tag, or by dispatch with the tag as input (the first release tag predates this file).
+# Differences from upstream's disabled workflows (*.yml-old), on purpose: `npm ci` from the lockfile
+# only (no `npm install`, no `npm audit fix`, no `npm install zephyr-javascript@latest`), mainnet only,
+# no S3 upload, no third-party actions, every action pinned by commit sha.
 name: build-wallet
 
 on:
   push:
     tags: ['v*-sec.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build, for example v2.3.0-sec.1'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 env:
-  NODE_VERSION: '16'
+  NODE_VERSION: '16'   # react-scripts 4 / webpack 4 do not build on Node >= 17 (OpenSSL 3 lacks MD4)
   REACT_APP_NET_TYPE_ID: '0'
   ZEPHYR_DESKTOP_DEVELOPMENT: 'false'
   NODE_INSTALLER: npm
@@ -37,9 +33,12 @@ env:
 jobs:
   web:
     runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -52,11 +51,12 @@ jobs:
       - name: Build
         working-directory: client
         run: npm run build:web:ci
-      - name: Tarball (deterministic: sorted, fixed mtime and owner)
+      - name: Tarball, deterministic (sorted, fixed mtime, owner and modes)
         run: |
           export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
           tar --sort=name --mtime="@${SOURCE_DATE_EPOCH}" --owner=0 --group=0 --numeric-owner \
-              -C client -cf - build | gzip -n -9 > "zephyr-wallet-web-${GITHUB_REF_NAME}.tar.gz"
+              --mode='u+rwX,go+rX,go-w' -C client -cf - build | gzip -n -9 > "zephyr-wallet-web-${TAG}.tar.gz"
+          sha256sum "zephyr-wallet-web-${TAG}.tar.gz"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: web
@@ -65,16 +65,21 @@ jobs:
 
   desktop-mac:
     runs-on: macos-14
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           persist-credentials: false
+      - name: Checkout readable by everyone (the packager copies these modes into the installer)
+        run: chmod -R u+rwX,go+rX,go-w .
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: git dependencies over https
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-      - name: Client build for desktop
+      - name: Client build for desktop, copied into the desktop app
         working-directory: client
         run: |
           npm ci
@@ -95,9 +100,12 @@ jobs:
 
   desktop-windows:
     runs-on: windows-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -105,7 +113,7 @@ jobs:
       - name: git dependencies over https
         shell: bash
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-      - name: Client build for desktop
+      - name: Client build for desktop, copied into the desktop app
         shell: bash   # the client's npm scripts use bash
         working-directory: client
         run: |
@@ -126,10 +134,15 @@ jobs:
 
   desktop-linux:
     runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           persist-credentials: false
+      - name: Checkout readable by everyone (the packager copies these modes into the installer)
+        run: chmod -R u+rwX,go+rX,go-w .
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -137,17 +150,27 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg fakeroot
       - name: git dependencies over https
         run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-      - name: Client build for desktop
+      - name: Client build for desktop, copied into the desktop app
         working-directory: client
         run: |
+          umask 0022   # electron-packager copies this tree into the deb with its modes
           npm ci
           npm run build:desktop:ci
           npm run copy-build
       - name: Make deb
         working-directory: zephyr-desktop-app
         run: |
+          umask 0022   # dpkg-deb refuses a control directory that is not world-readable (seen with umask 007)
           npm ci
           npm run make
+      - name: Every entry of the deb must be world-readable
+        working-directory: zephyr-desktop-app
+        run: |
+          set -euo pipefail
+          debs=(out/make/deb/x64/*.deb); [ "${#debs[@]}" = 1 ] || { echo "expected one deb, got ${#debs[@]}"; exit 1; }
+          dpkg-deb -c "${debs[0]}" | awk '
+            substr($1,2,1) != "r" || substr($1,5,1) != "r" || substr($1,8,1) != "r" { print; bad++ }
+            END { if (bad) { print bad " entries are not world-readable"; exit 1 } }'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-linux
@@ -157,12 +180,14 @@ jobs:
   flatpak:
     needs: desktop-linux
     runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
-      - name: Manifest from the home repo (pinned; the fork's build config stays upstream's)
+      - name: Manifest from the home repo, pinned (the fork's build config stays upstream's)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: zephyr-backports/zephyr-backports
-          ref: main   # DRAFT: pin to a commit sha of the home repo once the manifest is published
+          ref: HOME_SHA   # the reviewer replaces this with the home-repo commit that carries the manifest
           path: home
           persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -180,7 +205,7 @@ jobs:
           cp home/tools/release/flatpak/dev.lateo.zephyr.yml .
           cp "${debs[0]}" zephyr.deb
           flatpak-builder --user --install-deps-from=flathub --force-clean --repo=repo build-dir dev.lateo.zephyr.yml
-          flatpak build-bundle repo "zephyr-wallet-${GITHUB_REF_NAME}.flatpak" dev.lateo.zephyr
+          flatpak build-bundle repo "zephyr-wallet-${TAG}.flatpak" dev.lateo.zephyr
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: flatpak
@@ -192,12 +217,14 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write   # only this job may create the draft release
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: dist
           merge-multiple: true
-      - name: SHA256SUMS (unsigned; the owner signs locally)
+      - name: SHA256SUMS, unsigned (the owner signs locally)
         working-directory: dist
         run: |
           set -euo pipefail
@@ -208,7 +235,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
-            --title "$GITHUB_REF_NAME" \
-            --notes "Same source as upstream plus the security changes listed in SECURITY-BACKPORTS.md. Not notarized or Authenticode-signed (POLICY §7). Verify with SHA256SUMS.asc (added after signing) and this run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+          cat > notes.md <<EOF
+          Zephyr wallet ${TAG}: the same source as upstream's ${TAG%-sec.*} plus the security changes listed in
+          SECURITY-BACKPORTS.md (the wallet core rebuilt from the zephyr and zephyr-cpp security forks, and
+          dependency pins).
+
+          These builds are not notarized by Apple or Authenticode-signed for Windows, like upstream's own
+          builds; macOS Gatekeeper and Windows SmartScreen will warn. The web bundle is upstream's web build
+          unchanged: it connects to the node at localhost:3000 of the machine that runs the browser (set in
+          client/.env of the source). Verify the files instead:
+          - gpg --verify SHA256SUMS.asc (release key, see the zephyr-backports home repository), then
+            sha256sum -c SHA256SUMS
+          - the signed tag ${TAG} and the build manifest of the WASM
+          - this public build run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          EOF
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "Zephyr wallet $TAG" --notes-file notes.md \
             $(find dist -type f | LC_ALL=C sort)
