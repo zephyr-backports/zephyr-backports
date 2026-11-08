@@ -69,3 +69,8 @@ client build differs across checkouts, as the web build does) and `index.html` a
 Everything else byte-equal: Electron, `AppRun`, the two WASM copies (`c984b999…`), the desktop file and icon. The hash
 differs from the local one because the CI run built its own deb; from one deb the AppImage is reproducible (dry run,
 round 26). Runtime `type2-runtime/commit/dd6cebe`. Started 12 s under Xvfb: exit 124, the listener warning, no sandbox error.
+
+## Release withdrawn (2026-11-08)
+The GitHub release `v2.3.0-sec.1` of zephyr-wallet, with its eleven assets, was deleted on 2026-11-08 at the maintainer's
+request: the organisation publishes no installers (POLICY §7). The signed tag `v2.3.0-sec.1` (`53a2972e5` → `edef8c0ee`)
+stays. The hashes above remain the record of what was built and published between 2026-11-07T18:53Z and 2026-11-08.
