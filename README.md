@@ -10,14 +10,14 @@ inventories, the backport lists, the tooling and the keys. The code lives in the
 our own; we only backport fixes that Monero has published. Report Zephyr vulnerabilities to the
 ZephyrProtocol team, not to us (see [SECURITY.md](https://github.com/zephyr-backports/.github/blob/main/SECURITY.md)).
 
-## Status (2026-11-07)
+## Status (2026-11-08)
 
 | Fork | Upstream base | Branch | Latest tag |
 |---|---|---|---|
 | [`zephyr`](https://github.com/zephyr-backports/zephyr) | v2.3.0 (`67c5f53b878fef41fb5e74c4382d5b7a2f37fd8a`) | `security/v2.3.0` | [`v2.3.0-sec.2`](https://github.com/zephyr-backports/zephyr/releases/tag/v2.3.0-sec.2) (30 backports: 10 in [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr/releases/tag/v2.3.0-sec.1), 20 more in sec.2); advisories SB-001 to SB-034 |
 | [`zephyr-cpp`](https://github.com/zephyr-backports/zephyr-cpp) | upstream master (`4a99272f6d7a171cf6625016939094637459975a`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-cpp/releases/tag/v2.3.0-sec.1) (4 backports from monero-cpp); advisories SB-011 to SB-014. No further monero-cpp fix applies as a cherry-pick: Zephyr's adaptation rewrote the code they touch (see the list) |
 | [`zephyr-javascript`](https://github.com/zephyr-backports/zephyr-javascript) | upstream master (`9d022ded2a8d188127173aa7cf79fdd5ee006353`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-javascript/releases/tag/v2.3.0-sec.1): `dist/` rebuilt from the release set of 2026-11-07, with build manifest and SHA256SUMS; advisory SB-035 |
-| [`zephyr-wallet`](https://github.com/zephyr-backports/zephyr-wallet) | upstream master (`a63147fd`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-wallet/releases/tag/v2.3.0-sec.1): the rebuilt WASM in `client/public/`, the library pinned to zephyr-javascript `v2.3.0-sec.1`, lockfile pins; advisories SB-036 to SB-038. Release artefacts (web tarball, macOS dmg and zip for arm64 and x64, Windows installer, deb, flatpak, AppImage) with `SHA256SUMS` signed by the release key on the [release page](https://github.com/zephyr-backports/zephyr-wallet/releases/tag/v2.3.0-sec.1), built by [public run 42401869253](https://github.com/zephyr-backports/zephyr-wallet/actions/runs/42401869253) |
+| [`zephyr-wallet`](https://github.com/zephyr-backports/zephyr-wallet) | upstream master (`a63147fd`) | `security/v2.3.0` | [`v2.3.0-sec.1`](https://github.com/zephyr-backports/zephyr-wallet/releases/tag/v2.3.0-sec.1): the rebuilt WASM in `client/public/`, the library pinned to zephyr-javascript `v2.3.0-sec.1`, lockfile pins; advisories SB-036 to SB-038. (An installer release of this tag, made 2026-11-07, is withdrawn once the maintainer's own builds exist: POLICY §7) |
 
 ## Release sets
 
@@ -27,7 +27,7 @@ the WASM built from a set carries both in its build manifest and `Built-From:` t
 
 | Set | zephyr | zephyr-cpp | WASM (zephyr-javascript) | zephyr-wallet |
 |---|---|---|---|---|
-| 2026-11-07 | `v2.3.0-sec.2` (`8c6a12025`) | `v2.3.0-sec.1` (`3a2ee602e`) | `v2.3.0-sec.1`: `dist/` rebuilt from these two (`Built-From:` trailers, `dist/build-manifest.json`, `dist/SHA256SUMS`) | `v2.3.0-sec.1`: that `dist/` in `client/public/`, the library pinned to the same tag, lockfile pins; the installers and the web tarball on the [release page](https://github.com/zephyr-backports/zephyr-wallet/releases/tag/v2.3.0-sec.1) with signed `SHA256SUMS` ([run 42401869253](https://github.com/zephyr-backports/zephyr-wallet/actions/runs/42401869253)) |
+| 2026-11-07 | `v2.3.0-sec.2` (`8c6a12025`) | `v2.3.0-sec.1` (`3a2ee602e`) | `v2.3.0-sec.1`: `dist/` rebuilt from these two (`Built-From:` trailers, `dist/build-manifest.json`, `dist/SHA256SUMS`) | `v2.3.0-sec.1`: that `dist/` in `client/public/`, the library pinned to the same tag, lockfile pins; |
 
 The pick lists with per-commit status: [`backports/v2.3.0.txt`](backports/v2.3.0.txt) and
 [`backports/zephyr-cpp-686fbdc.txt`](backports/zephyr-cpp-686fbdc.txt); the advisory index:
@@ -44,6 +44,8 @@ sync of mainnet from an upstream node, daemon checks) is in [`evidence/`](eviden
   same fix as it landed on `master` when that version also fixes code the base carries), and from
   `woodser/monero-cpp` for zephyr-cpp.
   Conflicts are resolved context-only inside the same commit. A semantic conflict means skip.
+- **No installers.** The org publishes signed tags, advisories, evidence and the rebuilt WASM; builds for
+  end users are the maintainer's own project under the personal account, outside this policy (POLICY §7).
 - **Never breaks compatibility** with upstream: no consensus, relay, p2p, RPC or file-format
   changes. Fork and upstream interoperate both ways; the version string stays the upstream one.
 - **Every backport has an advisory** in the fork's `SECURITY-BACKPORTS.md`: origin, impact,
@@ -70,7 +72,7 @@ certifies the release key. Details and rotation: [`keys/README.md`](keys/README.
 gpg --keyserver hkps://keys.openpgp.org --recv-keys FB3994F0997CA6F043D724919EFF03F527D240A1   # or import keys/*.asc
 gpg --fingerprint zephyr-backports@lateo.dev          # compare with the table above
 git verify-tag v2.3.0-sec.1                           # a release tag
-gpg --verify SHA256SUMS.asc && sha256sum -c SHA256SUMS   # published artefacts, when any
+sha256sum -c dist/SHA256SUMS                           # the rebuilt WASM in zephyr-javascript, named in the signed tag
 ```
 
 Every release tag names the full upstream commit sha in its message. Upstream signs nothing, so
@@ -93,7 +95,7 @@ tools/backport.sh                     cherry-pick in order, stop on conflict, dr
 tools/check-provenance.sh             the provenance check (fork CI and local)
 tools/inventory.sh                    rebuild the inventory from monero/release-v0.18
 fork-files/<fork>/                    files that go into a fork: README section, SECURITY-BACKPORTS.md, CI callers
-tools/release/                        release tooling drafts (wallet build workflow, WASM builder image, flatpak)
+tools/release/                        WASM build tooling (the rebuilt `dist/` of zephyr-javascript); no installers are built or published here (POLICY §7)
 tools/protect.sh                      applies the branch rulesets of the public repos
 keys/                                 public keys and fingerprints
 .github/workflows/provenance.yml      reusable provenance workflow the forks call
