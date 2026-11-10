@@ -31,8 +31,8 @@ What the wallet project needs, extensible if other Zephyr projects come along. B
 | Repo | Based on | Fixes from | Status |
 |---|---|---|---|
 | `ZephyrProtocol/zephyr` | Monero master 2024-03-12 (`15a4ff66f`) | `monero-project/monero` | **active**: wallet and daemon |
-| `ZephyrProtocol/zephyr-cpp` | `woodser/monero-cpp` (base commit still to be established) | monero-cpp | when needed |
-| `ZephyrProtocol/zephyr-javascript` | `woodser/monero-javascript` | monero-ts/-javascript | the C++ bridge only, when needed |
+| `ZephyrProtocol/zephyr-cpp` | `woodser/monero-cpp` (`686fbdc`, 2023-05-25) | monero-cpp | **active**: the wallet library core |
+| `ZephyrProtocol/zephyr-javascript` | `woodser/monero-javascript` | monero-ts/-javascript | **active**: the rebuilt WASM as an artefact (§5); picks for the C++ bridge only, when needed |
 | `ZephyrProtocol/zephyr-wallet` | `haven-protocol-org/haven-web-app` | — | **artefact and dependency pins only** (§5): the rebuilt WASM and lockfile pins; no application code |
 | `zephyr-gui` | — | — | no, unless the community asks |
 | explorer, pool, pyzeph | — | — | no |
