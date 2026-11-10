@@ -1,6 +1,6 @@
 # Backport list for base v2.3.0 (67c5f53b). One line per Monero commit, in pick order.
 # Columns: <monero-sha> <release> <class> <status> <description>
-#   release: sec.1 | sec.2 | sec.3 | skip
+#   release: sec.1 | sec.2 | skip
 #   class:   memory | secrets | funds | privacy | dos | dependency
 #   status:  todo | picked | conflict | skipped
 # tools/backport.sh reads this file; lines starting with # are ignored.
@@ -47,23 +47,31 @@ af88effd9 sec.2 privacy picked rpc: disable get_transaction_pool in restricted m
 4f6652f35 sec.2 dos     picked net: cap aggregate ZMQ receive size
 d1508916b sec.2 dos     picked rpc: recover from oversized ZMQ requests
 
-214328387 sec.3 memory  todo Add checks in cryptonote serialization routine (needs full-chain proof)
-d869dc098 sec.3 memory  todo cryptonote_basic: serialization checks (needs full-chain proof)
-b66e2227c sec.3 memory  todo cryptonote_basic: parse_and_validate_tx param to check max size (needs full-chain proof)
-71e3be0e4 sec.3 memory  todo cryptonote_protocol: tighten pruned transaction blob validation (1 hunk; stricter parsing of peer data, needs full-chain proof)
+# Closed 2026-11-10 (owner): no further batch on v2.3.0; the last zephyr tag on this base is v2.3.0-sec.2.
+# Measured 2026-11-10 on security/v2.3.0 9abdf5f98, each commit alone, in a throwaway clone.
+#
+# Serialisation hardening (planned as sec.3): all four conflict, 15 hunks; dropped as a set (POLICY §4.4, §5).
+214328387 skip  memory  conflict Add checks in cryptonote serialization routine (1 hunk serialization.h, not classified; changes the PREPARE_CUSTOM_VECTOR_SERIALIZATION signature; dropped with the set)
+d869dc098 skip  memory  conflict cryptonote_basic: serialization checks (semantic: 7 hunks in 5 files; the new deserialize_vin requires txin_to_key, a type Zephyr does not have (txin_zephyr_key), and adds count limits on vin, vout and key offsets, i.e. stricter parsing under POLICY §4.4)
+b66e2227c skip  memory  conflict cryptonote_basic: parse_and_validate_tx param to check max size (6 hunks in 4 files, not classified; dropped with the set)
+71e3be0e4 skip  memory  conflict cryptonote_protocol: tighten pruned transaction blob validation (semantic: the pre-image make_pool_supplement_from_block_entry does not exist in Zephyr)
 
-# sec.4 = restricted-ZMQ hardening (opt-in flag, decided 2026-11-05); the rest later (see ANALYSIS-REPOS.md §1):
-7f2cfe929 sec.4 privacy todo zmq: add restricted rpc mode (+217, new flag; feature-shaped hardening, decision needed; prerequisite of the next two)
-878c78176 sec.4 privacy todo zmq: apply restricted-mode privacy filtering to get_transaction_pool (clean after 7f2cfe929)
-dfb85dde0 sec.4 privacy todo rpc: hide ZMQ request contents in restricted mode (1 hunk daemon.cpp; after 7f2cfe929)
-1d45021cd later privacy todo rpc: hide sensitive txs from restricted block templates (4 hunks; touches blockchain.cpp/tx_pool.cpp, POLICY §4.1 review)
-096abdaa2 later dos     todo net: detect half-closed sockets before connection reuse (2 hunks, in tests; re-measure without test files)
-f277d328c later dos     todo p2p, rpc: group public IPv6 connection limits by /64 (6 hunks, +275; daemon-focused release)
-ee9e4a49b later dos     todo p2p: connection patches (3 hunks; daemon-focused release)
-f618ee113 later dos     todo Fix stall issues with p2p (4 hunks; daemon-focused release)
-05729aba7 later dependency todo depends: boost: update to 1.66.0 (1 hunk boost.mk; build only)
-b556ca667 later dependency todo depends: boost: update to 1.69.0 (2 hunks; build only)
-22a69e588 later dependency todo depends: libusb: update to 1.0.30 (2 hunks libusb.mk)
+# Restricted-ZMQ trio (planned as sec.4, decided 2026-11-05, reversed 2026-11-10): the three apply cleanly, but
+# 7f2cfe929 adds a command-line flag and two source files, which is a feature under POLICY §1; opt-in, no known
+# public ZMQ-RPC node, and 878c78176 changes tx-pool code that also runs without the flag.
+7f2cfe929 skip  privacy skipped zmq: add restricted rpc mode (+217, new flag --restricted-zmq-rpc; feature, POLICY §1)
+878c78176 skip  privacy skipped zmq: apply restricted-mode privacy filtering to get_transaction_pool (depends on 7f2cfe929)
+dfb85dde0 skip  privacy skipped rpc: hide ZMQ request contents in restricted mode (depends on 7f2cfe929)
+
+# Former "later" group (2026-11-10): not for these forks; conflicts that need porting or build-only changes.
+1d45021cd skip  privacy skipped rpc: hide sensitive txs from restricted block templates (4 hunks; touches blockchain.cpp/tx_pool.cpp, POLICY §4.1)
+096abdaa2 skip  dos     skipped net: detect half-closed sockets before connection reuse (2 hunks, in tests)
+f277d328c skip  dos     skipped p2p, rpc: group public IPv6 connection limits by /64 (6 hunks, +275; needs porting)
+ee9e4a49b skip  dos     skipped p2p: connection patches (3 hunks; needs porting)
+f618ee113 skip  dos     skipped Fix stall issues with p2p (4 hunks; needs porting)
+05729aba7 skip  dependency skipped depends: boost: update to 1.66.0 (1 hunk boost.mk; build only, no advisory named)
+b556ca667 skip  dependency skipped depends: boost: update to 1.69.0 (2 hunks; build only, no advisory named)
+22a69e588 skip  dependency skipped depends: libusb: update to 1.0.30 (2 hunks libusb.mk; no advisory named)
 
 # Out of scope under POLICY §2 (correctness, not security) or §4 / own code needed:
 7507aed69 skip  -       skipped wallet2: guard gamma picker against zero-output windows (release-v0.18 form; replaced by its master counterpart 0b7967907 because Zephyr carries the master-only test it adjusts; found by the native unit tests 2026-11-05)
