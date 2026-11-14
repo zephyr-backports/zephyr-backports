@@ -5,7 +5,7 @@
 *Date: 2026-11-04 · Originally written for the webwallet project ("we backport nothing"). Under `POLICY.md` this organisation does backport, but only clear security issues (§2) without breaking compatibility (§4); the selection is in `PLAN-v2.3.0.md` and `backports/v2.3.0.txt`.*
 
 ## 1. Why and how
-Zephyr v2.3.0 is Monero master of 2024-03-12 (`15a4ff66f`) plus ~1 % own code (webwallet ANALYSE §3.1). Monero has since moved on to v0.18.5.4 (2026-10-14). Everything Monero repaired in those 2.5 years in `wallet2`, epee and the cryptonote serialisation is **not** in the core our wallet runs. This document says what that is and what it means for us.
+Zephyr v2.3.0 is Monero master of 2024-03-12 (Monero `c8214782f`; `15a4ff66f` is Zephyr's replayed copy of that merge) plus about 4 % own and Haven-derived code (`BASELINE.md`, corrected 2026-11-14). Monero has since moved on to v0.18.5.4 (2026-10-14). Everything Monero repaired in those 2.5 years in `wallet2`, epee and the cryptonote serialisation is **not** in the core our wallet runs. This document says what that is and what it means for us.
 
 Method (reproducible, §8):
 1. All commits on Monero's `release-v0.18` since 2024-03-12 that touch a directory in our WASM build (`src/wallet`, `contrib/epee`, `cryptonote_basic`, `cryptonote_core`, `ringct`, `crypto`, `common`, `device`, `multisig`, `serialization`, `net`, `mnemonics`, `rpc`, `checkpoints`): **377**.
