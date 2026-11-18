@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 150
     steps:
       - name: checkout fork at the pull request head, not the synthetic merge commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
@@ -21,7 +21,7 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install build-essential cmake libboost-all-dev miniupnpc libunbound-dev graphviz doxygen libunwind8-dev pkg-config libssl-dev libzmq3-dev libsodium-dev libhidapi-dev libnorm-dev libusb-1.0-0-dev libpgm-dev libprotobuf-dev protobuf-compiler ccache
       - name: ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.ccache
           key: ccache-tests-${{ github.sha }}
